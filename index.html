@@ -1141,8 +1141,27 @@
   .error-msg.show { display:block; animation:slideUp 0.3s ease; }
   .loading-spinner { display:inline-block; width:16px; height:16px; border:2px solid rgba(255,255,255,0.3); border-top-color:white; border-radius:50%; animation:spin 0.8s linear infinite; vertical-align:middle; margin-right:6px; }
   @keyframes spin { to{transform:rotate(360deg);} }
-  .char-counter { font-size:12px; color:var(--muted); text-align:left; margin-top:-8px; font-weight:600; }
-  .char-counter.warn { color:var(--red); }
+  /* انتظار النتائج */
+  .waiting-results-wrap {
+    text-align:center; padding:40px 20px;
+  }
+  .waiting-results-emoji { font-size:72px; display:block; margin-bottom:16px; animation:pulse-slow 2s ease-in-out infinite; }
+  .waiting-results-title { font-family:'Tajawal',sans-serif; font-size:26px; font-weight:800; color:#38bdf8; margin-bottom:8px; }
+  .waiting-results-sub { color:var(--muted); font-size:14px; margin-bottom:28px; }
+  .waiting-results-timer {
+    font-family:'Tajawal',sans-serif; font-size:64px; font-weight:900;
+    background:linear-gradient(135deg,#38bdf8,#67e8f9);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+    line-height:1; margin-bottom:16px;
+  }
+  .waiting-results-timer.urgent { background:linear-gradient(135deg,#ef4444,#fca5a5); -webkit-background-clip:text; background-clip:text; }
+  .waiting-results-players { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:16px; }
+  .wrp-chip {
+    padding:8px 16px; border-radius:10px; font-size:13px; font-weight:700;
+    background:rgba(56,189,248,0.1); border:1px solid rgba(56,189,248,0.25); color:var(--muted);
+  }
+  .wrp-chip.done { background:rgba(16,185,129,0.15); border-color:rgba(16,185,129,0.4); color:#6ee7b7; }
+  .wrp-chip.me { border-color:rgba(245,158,11,0.4); color:var(--gold); }
 </style>
 </head>
 <body>
@@ -1564,6 +1583,18 @@
     </div>
   </div>
 
+  <!-- ══ ONLINE: انتظار النتائج ══ -->
+  <div class="screen" id="screen-online-waiting-results">
+    <div class="results-card" style="text-align:center;">
+      <span style="font-size:72px;display:block;margin-bottom:16px;animation:pulse-slow 2s ease-in-out infinite;">⏳</span>
+      <h2 style="font-family:'Tajawal',sans-serif;font-size:24px;font-weight:800;color:#38bdf8;margin-bottom:6px;">أنهيت الأسئلة!</h2>
+      <p style="color:var(--muted);font-size:14px;margin-bottom:20px;">جارٍ انتظار بقية اللاعبين...</p>
+      <div class="waiting-results-timer" id="wr-timer">60</div>
+      <p style="color:var(--muted);font-size:13px;margin-bottom:20px;">ثانية متبقية للجميع</p>
+      <div class="waiting-results-players" id="wr-players"></div>
+    </div>
+  </div>
+
   <!-- ══ ONLINE: النتائج ══ -->
   <div class="screen" id="screen-online-results">
     <div class="results-card">
@@ -1701,17 +1732,34 @@ async function startOnlineGame(){
   if(Object.keys(onlinePlayers).length<2)return;
   let pool=currentType==='verbal'?allQuestions.verbal:currentType==='quantitative'?allQuestions.quantitative:[...allQuestions.verbal,...allQuestions.quantitative];
   const sp=[...pool].sort(()=>Math.random()-0.5).slice(0,10);
-  await onlineRoomRef.update({status:'playing',questions:sp.map(q=>({q:q.q,opts:q.opts,ans:q.ans,sub:q.sub||''})),startedAt:Date.now()});
-  onlineQuestions=sp; startOnlineQuiz();
+  const startTime = Date.now() + 1000; // يبدأ بعد ثانية
+  await onlineRoomRef.update({
+    status:'playing',
+    questions:sp.map(q=>({q:q.q,opts:q.opts,ans:q.ans,sub:q.sub||''})),
+    startedAt: startTime,
+    gameDuration: 60
+  });
+  onlineQuestions=sp;
+  startOnlineQuiz();
 }
 
 async function loadOnlineGameData(){
-  const snap=await onlineRoomRef.child('questions').once('value');
+  const snap=await onlineRoomRef.once('value');
   if(!snap.val())return;
-  onlineQuestions=snap.val(); startOnlineQuiz();
+  const d=snap.val();
+  onlineQuestions=d.questions||[];
+  // احسب الوقت المتبقي بناءً على وقت البداية
+  const startedAt = d.startedAt || Date.now();
+  const duration = d.gameDuration || 60;
+  const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+  onlineTimeLeft = Math.max(0, duration - elapsed);
+  startOnlineQuiz();
 }
 
 // ─── ONLINE QUIZ ──────────────────────────────────────────────────────────────
+let onlineSharedTimerInt = null;
+let onlineTimeLeft = 60;
+
 function startOnlineQuiz(){
   offAll(); onlineCurrentQ=0; onlineScore=0; playMode='online';
   document.getElementById('team-score-row').style.display='none';
@@ -1726,7 +1774,25 @@ function startOnlineQuiz(){
   renderOnlineBar();
   const ph=onlineRoomRef.child('players').on('value',snap=>{onlinePlayers=snap.val()||{};renderOnlineBar();});
   onlineUnsubs.push(()=>onlineRoomRef.child('players').off('value',ph));
-  showScreen('screen-quiz'); loadOnlineQ();
+
+  // بدء التايمر المشترك ٦٠ ثانية
+  onlineTimeLeft = 60;
+  document.getElementById('timer').textContent = onlineTimeLeft;
+  document.getElementById('timer-wrap').className = 'timer-wrap';
+  clearInterval(onlineSharedTimerInt);
+  onlineSharedTimerInt = setInterval(()=>{
+    onlineTimeLeft--;
+    document.getElementById('timer').textContent = onlineTimeLeft;
+    document.getElementById('timer-wrap').className = onlineTimeLeft<=10 ? 'timer-wrap urgent' : 'timer-wrap';
+    if(onlineTimeLeft <= 0){
+      clearInterval(onlineSharedTimerInt);
+      // انتهى الوقت — أنهِ اللعبة مباشرة
+      finishOnline();
+    }
+  }, 1000);
+
+  showScreen('screen-quiz');
+  loadOnlineQ();
 }
 
 function renderOnlineBar(){
@@ -1741,7 +1807,12 @@ function renderOnlineBar(){
 }
 
 function loadOnlineQ(){
-  if(onlineCurrentQ>=onlineQuestions.length){finishOnline();return;}
+  if(onlineCurrentQ>=onlineQuestions.length){
+    // أنهى كل الأسئلة — انتظر بقية اللاعبين
+    clearInterval(onlineTimerInt);
+    showWaitingResults();
+    return;
+  }
   onlineAnswered=false; clearInterval(onlineTimerInt);
   const q=onlineQuestions[onlineCurrentQ];
   document.getElementById('q-counter').textContent=`سؤال ${onlineCurrentQ+1} من ${onlineQuestions.length}`;
@@ -1764,19 +1835,54 @@ function loadOnlineQ(){
     b.innerHTML=`<span class="option-text">${opt.text}</span><span class="option-letter">${letters[i]}</span>`;
     b.onclick=()=>answerOnline(b,opt.orig===q.ans,q.ans); grid.appendChild(b);
   });
-  let tl=15;
-  document.getElementById('timer').textContent=tl;
-  document.getElementById('timer-wrap').className='timer-wrap';
-  onlineTimerInt=setInterval(()=>{
-    tl--; document.getElementById('timer').textContent=tl;
-    document.getElementById('timer-wrap').className=tl<=5?'timer-wrap urgent':'timer-wrap';
-    if(tl<=0){clearInterval(onlineTimerInt);timeoutOnline(q.ans);}
-  },1000);
+}
+
+function showWaitingResults(){
+  // أبلغ Firebase إن هذا اللاعب خلص
+  onlineRoomRef.child('players/'+onlineMyId+'/finished').set(true);
+  onlineRoomRef.child('players/'+onlineMyId+'/score').set(onlineScore);
+
+  // اعرض شاشة الانتظار
+  showScreen('screen-online-waiting-results');
+
+  // عداد متزامن مع onlineTimeLeft
+  const wrTimer = document.getElementById('wr-timer');
+  const wrTimerUpdate = setInterval(()=>{
+    if(wrTimer) {
+      wrTimer.textContent = onlineTimeLeft;
+      wrTimer.className = 'waiting-results-timer' + (onlineTimeLeft<=10?' urgent':'');
+    }
+    if(onlineTimeLeft<=0) clearInterval(wrTimerUpdate);
+  }, 200);
+
+  // تابع اللاعبين الذين خلصوا
+  const ph=onlineRoomRef.child('players').on('value',snap=>{
+    const pl=snap.val()||{};
+    const wrPlayers=document.getElementById('wr-players');
+    if(wrPlayers){
+      wrPlayers.innerHTML='';
+      Object.entries(pl).forEach(([pid,p])=>{
+        const chip=document.createElement('div');
+        const isDone=p.finished===true;
+        const isMe=pid===onlineMyId;
+        chip.className='wrp-chip'+(isDone?' done':'')+(isMe?' me':'');
+        chip.textContent=(isDone?'✅ ':'⏳ ')+p.name;
+        wrPlayers.appendChild(chip);
+      });
+    }
+  });
+  onlineUnsubs.push(()=>onlineRoomRef.child('players').off('value',ph));
+
+  // استمع لحالة finished من Firebase
+  const sh=onlineRoomRef.child('status').on('value',snap=>{
+    if(snap.val()==='finished') showOnlineResults();
+  });
+  onlineUnsubs.push(()=>onlineRoomRef.child('status').off('value',sh));
 }
 
 function answerOnline(btn,isCorrect,correctOrig){
   if(onlineAnswered)return;
-  onlineAnswered=true; clearInterval(onlineTimerInt);
+  onlineAnswered=true;
   document.querySelectorAll('.option-btn').forEach(b=>{b.disabled=true;if(parseInt(b.dataset.orig)===correctOrig)b.classList.add('correct');});
   const fb=document.getElementById('feedback-bar');
   if(isCorrect){
@@ -1788,33 +1894,28 @@ function answerOnline(btn,isCorrect,correctOrig){
     btn.classList.add('wrong'); fb.className='feedback-bar wrong-fb show'; fb.textContent='❌ إجابة خاطئة! الإجابة الصحيحة باللون الأخضر';
   }
   const nb=document.getElementById('next-btn');
-  nb.className='next-btn show'; nb.textContent=onlineCurrentQ>=onlineQuestions.length-1?'🏆 النتائج':'التالي ←';
+  nb.className='next-btn show'; nb.textContent=onlineCurrentQ>=onlineQuestions.length-1?'🏁 إنهاء':'التالي ←';
   nb.onclick=nextOnlineQ;
 }
 
-function timeoutOnline(correctOrig){
-  if(onlineAnswered)return;
-  onlineAnswered=true;
-  document.querySelectorAll('.option-btn').forEach(b=>{b.disabled=true;if(parseInt(b.dataset.orig)===correctOrig)b.classList.add('correct');});
-  const fb=document.getElementById('feedback-bar');
-  fb.className='feedback-bar wrong-fb show'; fb.textContent='⏰ انتهى الوقت! الإجابة الصحيحة باللون الأخضر';
-  const nb=document.getElementById('next-btn');
-  nb.className='next-btn show'; nb.textContent=onlineCurrentQ>=onlineQuestions.length-1?'🏆 النتائج':'التالي ←';
-  nb.onclick=nextOnlineQ;
-}
-
-function nextOnlineQ(){ onlineCurrentQ++; if(onlineCurrentQ>=onlineQuestions.length)finishOnline(); else loadOnlineQ(); }
+function nextOnlineQ(){ onlineCurrentQ++; loadOnlineQ(); }
 
 async function finishOnline(){
+  clearInterval(onlineSharedTimerInt);
   clearInterval(onlineTimerInt);
   await onlineRoomRef.child('players/'+onlineMyId+'/score').set(onlineScore);
   await onlineRoomRef.child('players/'+onlineMyId+'/finished').set(true);
-  if(onlineIsHost)setTimeout(async()=>{try{await onlineRoomRef.update({status:'finished'});}catch(e){}},2500);
+  // الرئيس يشغّل النتائج للكل
+  if(onlineIsHost){
+    setTimeout(async()=>{try{await onlineRoomRef.update({status:'finished'});}catch(e){}},500);
+  }
   showOnlineResults();
 }
 
 function showOnlineResults(){
-  offAll(); clearInterval(onlineTimerInt);
+  offAll();
+  clearInterval(onlineSharedTimerInt);
+  clearInterval(onlineTimerInt);
   document.getElementById('lifelines-bar').style.display='';
   const bar=document.getElementById('online-players-bar'); if(bar)bar.classList.remove('active');
   onlineRoomRef.child('players').once('value',snap=>{
