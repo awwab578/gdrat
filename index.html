@@ -2,24 +2,28 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-  <link rel="icon" type="image/png" href="favicon.png">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>اختبر قدراتك</title>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0a0a12;
-    --card: #12121e;
-    --border: #1e1e32;
+    --bg: #07080f;
+    --card: #0e1020;
+    --border: #1a1f3a;
     --accent: #7c3aed;
     --accent2: #a855f7;
     --gold: #f59e0b;
     --green: #10b981;
     --red: #ef4444;
-    --text: #e2e8f0;
-    --muted: #64748b;
+    --text: #f0f4ff;
+    --muted: #7c85b0;
     --team-green: #10b981;
-    --team-orange: #f97316;
+    --team-orange: #fb923c;
+    /* New vibrant extras */
+    --neon-blue: #38bdf8;
+    --neon-purple: #c084fc;
+    --neon-pink: #f472b6;
+    --neon-cyan: #67e8f9;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -42,7 +46,7 @@
     position: fixed;
     top: -40%; left: -20%;
     width: 80%; height: 80%;
-    background: radial-gradient(ellipse, rgba(124,58,237,0.15) 0%, transparent 70%);
+    background: radial-gradient(ellipse, rgba(124,58,237,0.22) 0%, transparent 70%);
     pointer-events: none;
     animation: drift 8s ease-in-out infinite alternate;
   }
@@ -51,7 +55,7 @@
     position: fixed;
     bottom: -40%; right: -20%;
     width: 70%; height: 70%;
-    background: radial-gradient(ellipse, rgba(168,85,247,0.1) 0%, transparent 70%);
+    background: radial-gradient(ellipse, rgba(16,185,129,0.12) 0%, transparent 70%);
     pointer-events: none;
     animation: drift 10s ease-in-out infinite alternate-reverse;
   }
@@ -96,26 +100,78 @@
   .menu-card::before {
     content: '';
     position: absolute; top:0; left:0; right:0; height:3px;
-    background: linear-gradient(90deg,transparent,var(--accent),var(--accent2),var(--gold),transparent);
+    background: linear-gradient(90deg,transparent,#a855f7,var(--accent2),#f59e0b,var(--gold),transparent);
   }
   .menu-card::after {
     content: '';
     position: absolute; inset:0;
-    background: radial-gradient(ellipse at 50% 0%,rgba(124,58,237,0.08) 0%,transparent 60%);
+    background: radial-gradient(ellipse at 50% 0%,rgba(124,58,237,0.12) 0%,transparent 60%);
     pointer-events: none;
   }
-  .menu-logo {
-    font-size: 80px; display: block; margin-bottom: 16px;
-    animation: floatBrain 3s ease-in-out infinite;
+  .school-name {
+    font-family: 'Tajawal', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--muted);
+    letter-spacing: 1px;
+    margin-bottom: 20px;
     position: relative; z-index: 1;
+    display: block;
   }
-  @keyframes floatBrain {
-    0%,100% { transform:translateY(0) rotate(-3deg); filter:drop-shadow(0 0 20px rgba(168,85,247,0.4)); }
-    50% { transform:translateY(-12px) rotate(3deg); filter:drop-shadow(0 0 30px rgba(168,85,247,0.7)); }
+
+  /* ═══════ BOOK LOGO ═══════ */
+  .menu-logo-wrap {
+    position: relative;
+    width: 130px; height: 130px;
+    margin: 0 auto 16px;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1;
+  }
+
+  /* Glow ring behind the book */
+  .menu-logo-wrap::before {
+    content: '';
+    position: absolute;
+    width: 100px; height: 100px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(6,182,212,0.25) 0%, transparent 70%);
+    animation: glowPulse 2.5s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes glowPulse {
+    0%,100% { transform: scale(1); opacity: 0.6; }
+    50% { transform: scale(1.3); opacity: 1; }
+  }
+
+  .menu-logo {
+    font-size: 76px;
+    display: block;
+    position: relative;
+    z-index: 2;
+    animation: floatBook 3s ease-in-out infinite;
+    filter: drop-shadow(0 0 18px rgba(6,182,212,0.5));
+    cursor: default;
+    user-select: none;
+  }
+  @keyframes floatBook {
+    0%   { transform: translateY(0px) rotate(-2deg) scale(1);   filter: drop-shadow(0 0 18px rgba(6,182,212,0.5)); }
+    30%  { transform: translateY(-8px) rotate(1deg) scale(1.04); filter: drop-shadow(0 0 32px rgba(6,182,212,0.85)); }
+    60%  { transform: translateY(-14px) rotate(-1.5deg) scale(1.06); filter: drop-shadow(0 6px 36px rgba(6,182,212,1)); }
+    100% { transform: translateY(0px) rotate(-2deg) scale(1);   filter: drop-shadow(0 0 18px rgba(6,182,212,0.5)); }
+  }
+
+  /* Floating orbs canvas */
+  #book-orbs-canvas {
+    position: absolute;
+    inset: -60px;
+    width: calc(100% + 120px);
+    height: calc(100% + 120px);
+    pointer-events: none;
+    z-index: 3;
   }
   .menu-title {
     font-family: 'Tajawal',sans-serif; font-size:48px; font-weight:800;
-    background: linear-gradient(135deg,#a855f7,#7c3aed,#f59e0b);
+    background: linear-gradient(135deg,#a855f7,var(--accent2),#f59e0b,var(--gold));
     -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
     margin-bottom:40px; line-height:1.2; position:relative; z-index:1;
   }
@@ -128,6 +184,7 @@
     color:white; cursor:pointer; width:100%;
     transition: all 0.3s cubic-bezier(0.175,0.885,0.32,1.275);
     position:relative; overflow:hidden; letter-spacing:0.5px;
+    box-shadow: 0 8px 32px rgba(124,58,237,0.4);
   }
   .btn-play::before {
     content:''; position:absolute; inset:0;
@@ -245,7 +302,7 @@
   .instruction-item:hover { background:rgba(124,58,237,0.12); border-color:rgba(124,58,237,0.3); transform:translateX(-3px); }
   .instruction-num {
     width:36px; height:36px; border-radius:10px;
-    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    background:linear-gradient(135deg,#a855f7,var(--accent),var(--accent2));
     display:flex; align-items:center; justify-content:center;
     font-size:16px; font-weight:800; color:white; flex-shrink:0;
     box-shadow:0 4px 12px rgba(124,58,237,0.3);
@@ -429,7 +486,7 @@
   .progress-bar { height:6px; background:var(--border); border-radius:99px; overflow:hidden; }
   .progress-fill {
     height:100%;
-    background:linear-gradient(90deg,var(--accent),var(--accent2));
+    background:linear-gradient(90deg,#a855f7,var(--accent2),#a855f7);
     border-radius:99px; transition:width 0.5s cubic-bezier(0.4,0,0.2,1);
     box-shadow:0 0 10px rgba(168,85,247,0.5);
   }
@@ -442,7 +499,7 @@
     display:flex; align-items:center; gap:6px;
     background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.2);
     border-radius:10px; padding:5px 10px;
-    font-size:13px; font-weight:700; color:#fc8181; transition:all 0.3s;
+    font-size:13px; font-weight:700; color:#fca5a5; transition:all 0.3s;
   }
   .timer-wrap.urgent {
     background:rgba(239,68,68,0.2); border-color:rgba(239,68,68,0.5);
@@ -560,10 +617,10 @@
   }
   .question-card::before {
     content:''; position:absolute; top:0; left:0; right:0; height:2px;
-    background:linear-gradient(90deg,transparent,var(--accent),transparent);
+    background:linear-gradient(90deg,transparent,#a855f7,var(--accent2),transparent);
   }
   .q-category {
-    font-size:12px; font-weight:700; color:var(--accent2);
+    font-size:12px; font-weight:700; color:#a855f7;
     text-transform:uppercase; letter-spacing:2px; margin-bottom:16px;
     display:flex; align-items:center; gap:8px;
   }
@@ -611,18 +668,19 @@
   }
   .feedback-bar.show { display:block; }
   @keyframes slideUp { from{opacity:0;transform:translateY(10px);} to{opacity:1;transform:translateY(0);} }
-  .feedback-bar.correct-fb { background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.4); color:#6ee7b7; }
-  .feedback-bar.wrong-fb { background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); color:#fca5a5; }
+  .feedback-bar.correct-fb { background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.4); color:#6ee7b7; }
+  .feedback-bar.wrong-fb { background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.35); color:#fca5a5; }
 
   .next-btn {
-    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    background:linear-gradient(135deg,var(--accent),#7c3aed,var(--accent2));
     border:none; border-radius:14px; padding:16px 32px;
     font-family:'Cairo',sans-serif; font-size:16px; font-weight:700;
     color:white; cursor:pointer; width:100%; margin-top:16px;
     transition:all 0.25s; display:none;
+    box-shadow: 0 6px 24px rgba(124,58,237,0.3);
   }
   .next-btn.show { display:block; animation:slideUp 0.3s ease; }
-  .next-btn:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(124,58,237,0.4); }
+  .next-btn:hover { transform:translateY(-2px); box-shadow:0 10px 30px rgba(124,58,237,0.5); }
 
   /* ═══════ RESULTS ═══════ */
   .results-card {
@@ -639,7 +697,7 @@
   .result-title { font-family:'Tajawal',sans-serif; font-size:36px; font-weight:800; margin-bottom:8px; }
   .result-score-big {
     font-size:72px; font-weight:900;
-    background:linear-gradient(135deg,var(--gold),#fbbf24);
+    background:linear-gradient(135deg,var(--gold),#f59e0b);
     -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
     line-height:1; margin:16px 0;
   }
@@ -655,7 +713,7 @@
   .stat-label { font-size:12px; color:var(--muted); font-weight:600; margin-top:4px; }
   .result-btns { display:flex; flex-direction:column; gap:12px; }
   .retry-btn {
-    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    background:linear-gradient(135deg,#a855f7,var(--accent),var(--accent2));
     border:none; border-radius:16px; padding:18px 48px;
     font-family:'Cairo',sans-serif; font-size:18px; font-weight:700;
     color:white; cursor:pointer; width:100%; transition:all 0.25s;
@@ -688,6 +746,15 @@
   }
   .team-result-card.green-team.winner { border-color: var(--team-green); }
   .team-result-card.orange-team.winner { border-color: var(--team-orange); }
+  .winner-trophy {
+    font-size: 40px; display: block; margin-bottom: 6px;
+    animation: trophyBounce 0.8s cubic-bezier(0.175,0.885,0.32,1.275);
+  }
+  @keyframes trophyBounce {
+    0% { transform: scale(0) rotate(-20deg); opacity: 0; }
+    60% { transform: scale(1.3) rotate(5deg); opacity: 1; }
+    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+  }
   .team-result-icon { font-size: 36px; margin-bottom: 8px; }
   .team-result-name { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
   .team-result-name.green-team { color: var(--team-green); }
@@ -708,6 +775,114 @@
   }
 
   body.no-timer .timer-wrap { display:none !important; }
+
+  /* ═══════ TEAM COUNTDOWN OVERLAY ═══════ */
+  .team-countdown-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.88);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 500;
+    backdrop-filter: blur(8px);
+    animation: fadeIn 0.3s ease;
+  }
+  .team-countdown-overlay.hide {
+    animation: fadeOut 0.4s ease forwards;
+  }
+  @keyframes fadeOut {
+    from { opacity:1; }
+    to { opacity:0; pointer-events:none; }
+  }
+  .countdown-team-label {
+    font-family: 'Tajawal', sans-serif;
+    font-size: 22px; font-weight: 800;
+    margin-bottom: 28px;
+    padding: 10px 28px;
+    border-radius: 14px;
+    letter-spacing: 0.5px;
+  }
+  .countdown-team-label.green-lbl {
+    color: #6ee7b7;
+    background: rgba(16,185,129,0.15);
+    border: 1.5px solid rgba(16,185,129,0.4);
+  }
+  .countdown-team-label.orange-lbl {
+    color: #fdba74;
+    background: rgba(249,115,22,0.15);
+    border: 1.5px solid rgba(249,115,22,0.4);
+  }
+  .countdown-number {
+    font-family: 'Tajawal', sans-serif;
+    font-size: 120px; font-weight: 900; line-height: 1;
+    animation: countPop 0.6s cubic-bezier(0.175,0.885,0.32,1.275);
+  }
+  .countdown-number.green-num {
+    background: linear-gradient(135deg, #10b981, #6ee7b7);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    filter: drop-shadow(0 0 30px rgba(16,185,129,0.6));
+  }
+  .countdown-number.orange-num {
+    background: linear-gradient(135deg, #f97316, #fdba74);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    filter: drop-shadow(0 0 30px rgba(249,115,22,0.6));
+  }
+  @keyframes countPop {
+    0% { transform: scale(0.3) rotate(-10deg); opacity: 0; }
+    70% { transform: scale(1.15) rotate(3deg); opacity: 1; }
+    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+  }
+  .countdown-go {
+    font-family: 'Tajawal', sans-serif;
+    font-size: 72px; font-weight: 900;
+    background: linear-gradient(135deg, var(--gold), #f59e0b);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    filter: drop-shadow(0 0 30px rgba(245,158,11,0.7));
+    animation: goPop 0.5s cubic-bezier(0.175,0.885,0.32,1.275);
+  }
+  @keyframes goPop {
+    0% { transform: scale(0.2); opacity: 0; }
+    60% { transform: scale(1.25); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .countdown-subtitle {
+    font-size: 16px; color: var(--muted); margin-top: 20px; font-weight: 600;
+    animation: fadeIn 0.5s ease;
+  }
+
+  /* ═══════ TEAM TIMER PROGRESS BAR ═══════ */
+  .team-round-timer-display {
+    display: none;
+    text-align: center;
+    margin-bottom: 6px;
+    font-family: 'Tajawal', sans-serif;
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    transition: color 0.5s;
+  }
+  .team-round-timer-display.active { display: block; }
+  .team-round-timer-display.green-t { color: #6ee7b7; text-shadow: 0 0 12px rgba(16,185,129,0.5); }
+  .team-round-timer-display.orange-t { color: #fdba74; text-shadow: 0 0 12px rgba(249,115,22,0.5); }
+  .team-round-timer-display.urgent-t { color: #fca5a5; text-shadow: 0 0 12px rgba(239,68,68,0.6); animation: pulse 0.6s ease-in-out infinite; }
+
+  .team-timer-bar-wrap {
+    width: 100%;
+    height: 8px;
+    background: var(--border);
+    border-radius: 99px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    display: none;
+  }
+  .team-timer-bar-wrap.active { display: block; }
+  .team-timer-bar-fill {
+    height: 100%;
+    border-radius: 99px;
+    transition: width 1s linear, background 1s;
+    background: linear-gradient(90deg, #10b981, #6ee7b7);
+  }
+  .team-timer-bar-fill.orange { background: linear-gradient(90deg, #f97316, #fdba74); }
+  .team-timer-bar-fill.urgent { background: linear-gradient(90deg, #ef4444, #fca5a5); }
 
   /* ═══════ MADE BY ═══════ */
   .made-by-section {
@@ -784,7 +959,7 @@
   /* ═══════ SETTINGS ICON & MODAL ═══════ */
   .settings-icon-btn {
     position: absolute;
-    top: 12px;
+    top: -8px;
     left: 12px;
     background: rgba(124,58,237,0.15);
     border: 1.5px solid rgba(124,58,237,0.4);
@@ -857,6 +1032,117 @@
     .lifelines-bar { gap: 6px; }
     .lifeline-btn { padding: 8px 4px; }
   }
+
+  /* ═══════ ONLINE MODE ═══════ */
+  .room-card, .waiting-card {
+    background:var(--card); border:1px solid var(--border);
+    border-radius:24px; padding:48px 40px 44px;
+    text-align:center; position:relative; overflow:visible;
+  }
+  .room-card::before, .waiting-card::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:2px;
+    background:linear-gradient(90deg,transparent,#38bdf8,#67e8f9,transparent);
+    border-radius:24px 24px 0 0;
+  }
+  .room-title {
+    font-family:'Tajawal',sans-serif; font-size:28px; font-weight:800;
+    background:linear-gradient(135deg,#38bdf8,#67e8f9);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+    margin-bottom:8px;
+  }
+  .room-sub { color:var(--muted); font-size:13px; margin-bottom:28px; }
+  .room-input-group { display:flex; flex-direction:column; gap:14px; margin-bottom:20px; }
+  .room-input {
+    background:rgba(56,189,248,0.06); border:1.5px solid rgba(56,189,248,0.25);
+    border-radius:14px; padding:16px 20px; width:100%;
+    font-family:'Cairo',sans-serif; font-size:16px; font-weight:600;
+    color:var(--text); outline:none; text-align:right; direction:rtl;
+    transition:border-color 0.2s,box-shadow 0.2s;
+  }
+  .room-input:focus { border-color:#38bdf8; box-shadow:0 0 0 3px rgba(56,189,248,0.15); }
+  .room-input::placeholder { color:var(--muted); }
+  .room-btn-primary {
+    background:linear-gradient(135deg,#0ea5e9,#38bdf8);
+    border:none; border-radius:14px; padding:16px 32px;
+    font-family:'Cairo',sans-serif; font-size:16px; font-weight:700;
+    color:white; cursor:pointer; width:100%;
+    transition:all 0.25s; box-shadow:0 6px 24px rgba(56,189,248,0.3);
+  }
+  .room-btn-primary:hover { transform:translateY(-2px); box-shadow:0 10px 30px rgba(56,189,248,0.4); }
+  .room-btn-primary:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+  /* صنع/دخول زرين */
+  .online-action-btns { display:flex; flex-direction:column; gap:14px; }
+  .online-action-btn {
+    background:rgba(56,189,248,0.06); border:1.5px solid rgba(56,189,248,0.25);
+    border-radius:16px; padding:22px; cursor:pointer; font-family:'Cairo',sans-serif;
+    color:var(--text); display:flex; align-items:center; gap:16px; text-align:right; width:100%;
+    position:relative; overflow:hidden;
+    transition:all 0.25s cubic-bezier(0.175,0.885,0.32,1.275);
+  }
+  .online-action-btn::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(56,189,248,0.15),transparent); opacity:0; transition:opacity 0.25s; }
+  .online-action-btn:hover { border-color:#38bdf8; transform:translateX(-5px); box-shadow:6px 0 24px rgba(56,189,248,0.2); }
+  .online-action-btn:hover::before { opacity:1; }
+  .oab-icon { font-size:40px; flex-shrink:0; position:relative; z-index:1; }
+  .oab-content { flex:1; text-align:right; position:relative; z-index:1; }
+  .oab-name { display:block; font-size:19px; font-weight:700; margin-bottom:4px; }
+  .oab-desc { display:block; font-size:13px; color:var(--muted); }
+  .oab-arrow { font-size:18px; color:var(--muted); position:relative; z-index:1; transition:transform 0.2s,color 0.2s; }
+  .online-action-btn:hover .oab-arrow { transform:translateX(-4px); color:#38bdf8; }
+  /* غرفة انتظار */
+  .waiting-room-name { font-family:'Tajawal',sans-serif; font-size:22px; font-weight:800; color:#38bdf8; margin-bottom:4px; }
+  .waiting-room-code { font-size:13px; color:var(--muted); margin-bottom:16px; }
+  .waiting-players-list { display:flex; flex-direction:column; gap:10px; margin:16px 0; max-height:280px; overflow-y:auto; }
+  .waiting-player-item {
+    background:rgba(56,189,248,0.08); border:1px solid rgba(56,189,248,0.2);
+    border-radius:12px; padding:14px 18px;
+    display:flex; align-items:center; gap:12px; animation:slideUp 0.3s ease;
+  }
+  .waiting-player-item.host { border-color:rgba(245,158,11,0.4); background:rgba(245,158,11,0.08); }
+  .waiting-player-avatar {
+    width:36px; height:36px; border-radius:10px;
+    background:linear-gradient(135deg,#0ea5e9,#38bdf8);
+    display:flex; align-items:center; justify-content:center;
+    font-size:16px; font-weight:800; color:white; flex-shrink:0;
+  }
+  .waiting-player-item.host .waiting-player-avatar { background:linear-gradient(135deg,#f59e0b,#fbbf24); }
+  .waiting-player-name { font-size:15px; font-weight:700; flex:1; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .waiting-player-badge { font-size:12px; color:var(--muted); white-space:nowrap; }
+  .waiting-player-item.host .waiting-player-badge { color:var(--gold); font-weight:700; }
+  .waiting-count { font-size:14px; color:var(--muted); margin-bottom:8px; }
+  .waiting-count span { color:#38bdf8; font-weight:700; }
+  .btn-start-game {
+    background:linear-gradient(135deg,#10b981,#34d399);
+    border:none; border-radius:14px; padding:18px 32px;
+    font-family:'Cairo',sans-serif; font-size:17px; font-weight:700;
+    color:white; cursor:pointer; width:100%; margin-top:8px;
+    transition:all 0.25s; box-shadow:0 6px 24px rgba(16,185,129,0.3); display:none;
+  }
+  .btn-start-game.visible { display:block; animation:slideUp 0.3s ease; }
+  .btn-start-game:hover { transform:translateY(-2px); }
+  .waiting-pulse { display:flex; align-items:center; justify-content:center; gap:6px; color:var(--muted); font-size:13px; margin-top:14px; }
+  .pulse-dot { width:8px; height:8px; border-radius:50%; background:#38bdf8; animation:pulseDot 1.2s ease-in-out infinite; }
+  .pulse-dot:nth-child(2){animation-delay:0.2s;} .pulse-dot:nth-child(3){animation-delay:0.4s;}
+  @keyframes pulseDot { 0%,100%{opacity:0.3;transform:scale(0.8);} 50%{opacity:1;transform:scale(1.2);} }
+  /* شريط اللاعبين داخل اللعبة */
+  .online-players-bar { display:none; flex-wrap:wrap; gap:8px; margin-bottom:12px; padding:10px 12px; background:rgba(56,189,248,0.06); border:1px solid rgba(56,189,248,0.2); border-radius:14px; }
+  .online-players-bar.active { display:flex; }
+  .online-player-chip { background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.25); border-radius:10px; padding:5px 12px; font-size:13px; font-weight:700; color:var(--text); display:flex; align-items:center; gap:6px; }
+  .online-player-chip.me { border-color:rgba(245,158,11,0.5); background:rgba(245,158,11,0.1); color:var(--gold); }
+  .chip-score { color:#67e8f9; font-size:12px; }
+  /* نتائج أونلاين */
+  .online-results-list { display:flex; flex-direction:column; gap:10px; margin:16px 0; }
+  .online-result-item { background:rgba(56,189,248,0.06); border:1px solid rgba(56,189,248,0.2); border-radius:14px; padding:14px 18px; display:flex; align-items:center; gap:14px; }
+  .online-result-item.winner { border-color:rgba(245,158,11,0.5); background:rgba(245,158,11,0.08); }
+  .online-result-rank { font-size:26px; width:38px; text-align:center; flex-shrink:0; }
+  .online-result-name { font-size:15px; font-weight:700; flex:1; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .online-result-score { font-size:19px; font-weight:800; color:#67e8f9; }
+  .online-result-item.winner .online-result-score { color:var(--gold); }
+  .error-msg { color:#fca5a5; font-size:13px; font-weight:600; margin-top:10px; padding:10px 16px; background:rgba(239,68,68,0.1); border-radius:10px; border:1px solid rgba(239,68,68,0.3); display:none; }
+  .error-msg.show { display:block; animation:slideUp 0.3s ease; }
+  .loading-spinner { display:inline-block; width:16px; height:16px; border:2px solid rgba(255,255,255,0.3); border-top-color:white; border-radius:50%; animation:spin 0.8s linear infinite; vertical-align:middle; margin-right:6px; }
+  @keyframes spin { to{transform:rotate(360deg);} }
+  .char-counter { font-size:12px; color:var(--muted); text-align:left; margin-top:-8px; font-weight:600; }
+  .char-counter.warn { color:var(--red); }
 </style>
 </head>
 <body>
@@ -867,7 +1153,11 @@
   <!-- ══ MAIN MENU ══ -->
   <div class="screen active" id="screen-menu">
     <div class="menu-card">
-      <span class="menu-logo">🧠</span>
+      <div class="school-name">🏫 ثانوية أبي بكر بن العربي</div>
+      <div class="menu-logo-wrap">
+        <canvas id="book-orbs-canvas"></canvas>
+        <span class="menu-logo">📖</span>
+      </div>
       <h1 class="menu-title">اختبر قدراتك!</h1>
       <div class="menu-buttons">
         <button class="btn-play" onclick="showPlayModeScreen()">
@@ -905,6 +1195,14 @@
           <div class="mode-btn-content">
             <span class="mode-btn-name">لعب بفريقين</span>
             <span class="mode-btn-desc">فريق أخضر 🟢 ضد فريق برتقالي 🟠 — كل فريق سؤال!</span>
+          </div>
+          <div class="mode-btn-arrow">←</div>
+        </button>
+        <button class="mode-btn" onclick="selectPlayMode('online')" style="border-color:rgba(56,189,248,0.35);">
+          <div class="mode-btn-icon">🌐</div>
+          <div class="mode-btn-content">
+            <span class="mode-btn-name" style="color:#67e8f9;">جماعي أونلاين</span>
+            <span class="mode-btn-desc">العب مع أصدقائك من أجهزة مختلفة — ٢ إلى ١٠ لاعبين!</span>
           </div>
           <div class="mode-btn-arrow">←</div>
         </button>
@@ -1046,6 +1344,13 @@
     </div>
   </div>
 
+  <!-- ══ TEAM COUNTDOWN OVERLAY ══ -->
+  <div class="team-countdown-overlay" id="team-countdown-overlay" style="display:none;">
+    <div class="countdown-team-label" id="countdown-team-label">🟢 دور الفريق الأخضر</div>
+    <div id="countdown-display" class="countdown-number green-num">3</div>
+    <div class="countdown-subtitle" id="countdown-subtitle">استعد للإجابة!</div>
+  </div>
+
   <!-- ══ QUIZ ══ -->
   <div class="screen" id="screen-quiz">
 
@@ -1069,6 +1374,15 @@
       <span id="team-banner-text">🟢 دور الفريق الأخضر</span>
       <span id="team-banner-q"></span>
     </div>
+
+    <!-- Team timer progress bar -->
+    <div class="team-round-timer-display" id="team-round-timer-display">⏱ 5:00</div>
+    <div class="team-timer-bar-wrap" id="team-timer-bar-wrap">
+      <div class="team-timer-bar-fill" id="team-timer-bar-fill"></div>
+    </div>
+
+    <!-- Online players bar -->
+    <div class="online-players-bar" id="online-players-bar"></div>
 
     <div class="quiz-header">
       <div class="progress-wrap">
@@ -1173,7 +1487,378 @@
 
   </div>
 
+  <!-- ══ ONLINE: صنع أو دخول غرفة ══ -->
+  <div class="screen" id="screen-online-action">
+    <div class="room-card">
+      <button class="back-btn-small" onclick="showScreen('screen-type')">→</button>
+      <span style="font-size:64px;display:block;margin-bottom:14px;animation:bounce 2s ease-in-out infinite;">🌐</span>
+      <h2 class="room-title">جماعي أونلاين</h2>
+      <p class="room-sub" id="online-type-label">نوع الأسئلة: لفظي</p>
+      <div class="online-action-btns">
+        <button class="online-action-btn" onclick="showScreen('screen-online-create')">
+          <div class="oab-icon">🏠</div>
+          <div class="oab-content">
+            <span class="oab-name">صنع غرفة</span>
+            <span class="oab-desc">أنشئ غرفة — أنت الرئيس وتبدأها متى تبغى</span>
+          </div>
+          <div class="oab-arrow">←</div>
+        </button>
+        <button class="online-action-btn" onclick="showScreen('screen-online-join')">
+          <div class="oab-icon">🚪</div>
+          <div class="oab-content">
+            <span class="oab-name">دخول غرفة</span>
+            <span class="oab-desc">ادخل رمز الغرفة اللي شاركه معك صاحبك</span>
+          </div>
+          <div class="oab-arrow">←</div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ ONLINE: صنع غرفة ══ -->
+  <div class="screen" id="screen-online-create">
+    <div class="room-card">
+      <button class="back-btn-small" onclick="showScreen('screen-online-action')">→</button>
+      <span style="font-size:52px;display:block;margin-bottom:12px;animation:bounce 2s ease-in-out infinite;">🏠</span>
+      <h2 class="room-title">صنع غرفة جديدة</h2>
+      <p class="room-sub">اكتب اسمك واسم الغرفة</p>
+      <div class="room-input-group">
+        <input class="room-input" id="create-name" placeholder="اسمك" maxlength="20" />
+        <input class="room-input" id="create-room-id" placeholder="اسم الغرفة" maxlength="10" oninput="document.getElementById('room-char-count').textContent=this.value.length+'/10';document.getElementById('room-char-count').className='char-counter'+(this.value.length>=10?' warn':'');" />
+        <div class="char-counter" id="room-char-count">0/10</div>
+      </div>
+      <div class="error-msg" id="create-error"></div>
+      <button class="room-btn-primary" id="create-btn" onclick="createRoom()">🏠 إنشاء الغرفة</button>
+    </div>
+  </div>
+
+  <!-- ══ ONLINE: دخول غرفة ══ -->
+  <div class="screen" id="screen-online-join">
+    <div class="room-card">
+      <button class="back-btn-small" onclick="showScreen('screen-online-action')">→</button>
+      <span style="font-size:52px;display:block;margin-bottom:12px;animation:bounce 2s ease-in-out infinite;">🚪</span>
+      <h2 class="room-title">دخول غرفة</h2>
+      <p class="room-sub">اكتب اسمك ورمز الغرفة</p>
+      <div class="room-input-group">
+        <input class="room-input" id="join-name" placeholder="اسمك" maxlength="20" />
+        <input class="room-input" id="join-room-id" placeholder="رمز الغرفة" maxlength="10" />
+      </div>
+      <div class="error-msg" id="join-error"></div>
+      <button class="room-btn-primary" id="join-btn" onclick="joinRoom()">🚪 دخول الغرفة</button>
+    </div>
+  </div>
+
+  <!-- ══ ONLINE: غرفة الانتظار ══ -->
+  <div class="screen" id="screen-online-waiting">
+    <div class="waiting-card">
+      <button class="settings-icon-btn" onclick="openWaitingSettings()" title="الإعدادات" style="position:absolute;top:-8px;left:12px;">⚙️</button>
+      <div class="waiting-room-name" id="waiting-room-name">🏠 غرفة: ---</div>
+      <div class="waiting-room-code">شارك الرمز أعلاه مع أصدقائك 👆</div>
+      <div class="waiting-count">اللاعبون: <span id="waiting-player-count">0</span> / ١٠</div>
+      <div class="waiting-players-list" id="waiting-players-list"></div>
+      <button class="btn-start-game" id="btn-start-online" onclick="startOnlineGame()">🚀 ابدأ اللعبة!</button>
+      <div class="waiting-pulse" id="waiting-pulse">
+        <div class="pulse-dot"></div><div class="pulse-dot"></div><div class="pulse-dot"></div>
+        <span>ينتظر اللاعبين...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ ONLINE: النتائج ══ -->
+  <div class="screen" id="screen-online-results">
+    <div class="results-card">
+      <span class="result-emoji" id="online-result-emoji">🏆</span>
+      <h2 class="result-title" id="online-result-title">انتهت اللعبة!</h2>
+      <div class="online-results-list" id="online-results-list"></div>
+      <div class="result-btns" style="margin-top:20px;">
+        <button class="home-btn" onclick="leaveOnlineGame()">🏠 القائمة الرئيسية</button>
+      </div>
+    </div>
+  </div>
+
 </div><!-- /container -->
+<script>
+// ─── FIREBASE ─────────────────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyAFlOrJxJb6b4BzvgzuFDs7H6lXBg797GE",
+  authDomain: "gdrat-ef01a.firebaseapp.com",
+  databaseURL: "https://gdrat-ef01a-default-rtdb.firebaseio.com",
+  projectId: "gdrat-ef01a",
+  storageBucket: "gdrat-ef01a.firebasestorage.app",
+  messagingSenderId: "567050774411",
+  appId: "1:567050774411:web:df0259acf71608181b318e"
+};
+let db=null, fbLoaded=false;
+async function loadFirebase() {
+  if (fbLoaded) return;
+  return new Promise((res,rej)=>{
+    const s1=document.createElement('script');
+    s1.src='https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js';
+    s1.onload=()=>{
+      const s2=document.createElement('script');
+      s2.src='https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js';
+      s2.onload=()=>{ try{ if(!firebase.apps.length)firebase.initializeApp(firebaseConfig); db=firebase.database(); fbLoaded=true; res(); }catch(e){rej(e);} };
+      s2.onerror=()=>rej(new Error('فشل')); document.head.appendChild(s2);
+    };
+    s1.onerror=()=>rej(new Error('فشل')); document.head.appendChild(s1);
+  });
+}
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let onlineRoomId='', onlineMyName='', onlineMyId='', onlineIsHost=false;
+let onlineRoomRef=null, onlineUnsubs=[], onlineCurrentType='verbal';
+let onlineQuestions=[], onlineCurrentQ=0, onlineScore=0;
+let onlineAnswered=false, onlineTimerInt=null, onlinePlayers={};
+
+function offAll(){ onlineUnsubs.forEach(fn=>{try{fn();}catch(e){}}); onlineUnsubs=[]; }
+function showErr(id,msg){ const el=document.getElementById(id); if(el){el.textContent=msg;el.classList.add('show');} }
+
+// ─── CREATE ROOM ──────────────────────────────────────────────────────────────
+async function createRoom(){
+  const name=(document.getElementById('create-name').value||'').trim();
+  const roomId=(document.getElementById('create-room-id').value||'').trim().toUpperCase().replace(/\s/g,'');
+  const btn=document.getElementById('create-btn');
+  document.getElementById('create-error').classList.remove('show');
+  if(!name){showErr('create-error','أدخل اسمك!');return;}
+  if(!roomId){showErr('create-error','أدخل اسم الغرفة!');return;}
+  if(roomId.length>10){showErr('create-error','اسم الغرفة أكثر من ١٠ أحرف!');return;}
+  btn.innerHTML='<span class="loading-spinner"></span>جارٍ الإنشاء...'; btn.disabled=true;
+  try{
+    await loadFirebase();
+    const roomRef=db.ref('rooms/'+roomId);
+    const snap=await roomRef.once('value');
+    if(snap.exists()){showErr('create-error','هذا الاسم مأخوذ! جرّب اسماً آخر.');btn.innerHTML='🏠 إنشاء الغرفة';btn.disabled=false;return;}
+    onlineMyId='p_'+Date.now(); onlineMyName=name; onlineRoomId=roomId; onlineIsHost=true;
+    await roomRef.set({host:onlineMyId,type:currentType,status:'waiting',createdAt:Date.now(),players:{[onlineMyId]:{name,score:0,joinedAt:Date.now()}}});
+    roomRef.child('players/'+onlineMyId).onDisconnect().remove();
+    onlineRoomRef=roomRef;
+    btn.innerHTML='🏠 إنشاء الغرفة'; btn.disabled=false;
+    enterWaitingRoom();
+  }catch(e){showErr('create-error','خطأ في الاتصال! تأكد من الإنترنت.');btn.innerHTML='🏠 إنشاء الغرفة';btn.disabled=false;}
+}
+
+// ─── JOIN ROOM ────────────────────────────────────────────────────────────────
+async function joinRoom(){
+  const name=(document.getElementById('join-name').value||'').trim();
+  const roomId=(document.getElementById('join-room-id').value||'').trim().toUpperCase().replace(/\s/g,'');
+  const btn=document.getElementById('join-btn');
+  document.getElementById('join-error').classList.remove('show');
+  if(!name){showErr('join-error','أدخل اسمك!');return;}
+  if(!roomId){showErr('join-error','أدخل رمز الغرفة!');return;}
+  btn.innerHTML='<span class="loading-spinner"></span>جارٍ الدخول...'; btn.disabled=true;
+  try{
+    await loadFirebase();
+    const roomRef=db.ref('rooms/'+roomId);
+    const snap=await roomRef.once('value');
+    if(!snap.exists()){showErr('join-error','الغرفة غير موجودة!');btn.innerHTML='🚪 دخول الغرفة';btn.disabled=false;return;}
+    const d=snap.val();
+    if(d.status==='playing'||d.status==='finished'){showErr('join-error','اللعبة بدأت بالفعل!');btn.innerHTML='🚪 دخول الغرفة';btn.disabled=false;return;}
+    if(Object.keys(d.players||{}).length>=10){showErr('join-error','الغرفة ممتلئة!');btn.innerHTML='🚪 دخول الغرفة';btn.disabled=false;return;}
+    onlineMyId='p_'+Date.now(); onlineMyName=name; onlineRoomId=roomId; onlineIsHost=false; currentType=d.type||'verbal';
+    await roomRef.child('players/'+onlineMyId).set({name,score:0,joinedAt:Date.now()});
+    roomRef.child('players/'+onlineMyId).onDisconnect().remove();
+    onlineRoomRef=roomRef;
+    btn.innerHTML='🚪 دخول الغرفة'; btn.disabled=false;
+    enterWaitingRoom();
+  }catch(e){showErr('join-error','خطأ في الاتصال! تأكد من الإنترنت.');btn.innerHTML='🚪 دخول الغرفة';btn.disabled=false;}
+}
+
+// ─── WAITING ROOM ─────────────────────────────────────────────────────────────
+function enterWaitingRoom(){
+  showScreen('screen-online-waiting');
+  document.getElementById('waiting-room-name').textContent='🏠 غرفة: '+onlineRoomId;
+  document.getElementById('btn-start-online').classList.remove('visible');
+  offAll();
+  const ph=onlineRoomRef.child('players').on('value',snap=>{onlinePlayers=snap.val()||{};renderWaiting();});
+  onlineUnsubs.push(()=>onlineRoomRef.child('players').off('value',ph));
+  if(!onlineIsHost){
+    const sh=onlineRoomRef.child('status').on('value',snap=>{if(snap.val()==='playing')loadOnlineGameData();});
+    onlineUnsubs.push(()=>onlineRoomRef.child('status').off('value',sh));
+  }
+}
+
+function renderWaiting(){
+  const count=Object.keys(onlinePlayers).length;
+  document.getElementById('waiting-player-count').textContent=count;
+  onlineRoomRef.child('host').once('value',hs=>{
+    const hostId=hs.val();
+    const list=document.getElementById('waiting-players-list'); list.innerHTML='';
+    Object.entries(onlinePlayers).sort((a,b)=>a[1].joinedAt-b[1].joinedAt).forEach(([pid,p])=>{
+      const isHost=pid===hostId, isMe=pid===onlineMyId;
+      const el=document.createElement('div');
+      el.className='waiting-player-item'+(isHost?' host':'');
+      el.innerHTML=`<div class="waiting-player-avatar">${p.name.charAt(0).toUpperCase()}</div><div class="waiting-player-name">${p.name}${isMe?' (أنا)':''}</div><div class="waiting-player-badge">${isHost?'👑 رئيس':'🎮 لاعب'}</div>`;
+      list.appendChild(el);
+    });
+    const sb=document.getElementById('btn-start-online'), pe=document.getElementById('waiting-pulse');
+    if(onlineIsHost&&count>=2){sb.classList.add('visible');if(pe)pe.style.display='none';}
+    else{sb.classList.remove('visible');if(pe)pe.style.display='flex';}
+  });
+}
+
+// ─── START (HOST) ─────────────────────────────────────────────────────────────
+async function startOnlineGame(){
+  if(Object.keys(onlinePlayers).length<2)return;
+  let pool=currentType==='verbal'?allQuestions.verbal:currentType==='quantitative'?allQuestions.quantitative:[...allQuestions.verbal,...allQuestions.quantitative];
+  const sp=[...pool].sort(()=>Math.random()-0.5).slice(0,10);
+  await onlineRoomRef.update({status:'playing',questions:sp.map(q=>({q:q.q,opts:q.opts,ans:q.ans,sub:q.sub||''})),startedAt:Date.now()});
+  onlineQuestions=sp; startOnlineQuiz();
+}
+
+async function loadOnlineGameData(){
+  const snap=await onlineRoomRef.child('questions').once('value');
+  if(!snap.val())return;
+  onlineQuestions=snap.val(); startOnlineQuiz();
+}
+
+// ─── ONLINE QUIZ ──────────────────────────────────────────────────────────────
+function startOnlineQuiz(){
+  offAll(); onlineCurrentQ=0; onlineScore=0; playMode='online';
+  document.getElementById('team-score-row').style.display='none';
+  document.getElementById('team-banner').style.display='none';
+  document.getElementById('score-badge-wrap').style.display='';
+  document.getElementById('timer-wrap').style.display='';
+  document.getElementById('team-round-timer-display').classList.remove('active');
+  document.getElementById('team-timer-bar-wrap').classList.remove('active');
+  const pw=document.querySelector('.progress-wrap'); if(pw)pw.style.display='';
+  document.getElementById('lifelines-bar').style.display='none';
+  const bar=document.getElementById('online-players-bar'); if(bar)bar.classList.add('active');
+  renderOnlineBar();
+  const ph=onlineRoomRef.child('players').on('value',snap=>{onlinePlayers=snap.val()||{};renderOnlineBar();});
+  onlineUnsubs.push(()=>onlineRoomRef.child('players').off('value',ph));
+  showScreen('screen-quiz'); loadOnlineQ();
+}
+
+function renderOnlineBar(){
+  const bar=document.getElementById('online-players-bar'); if(!bar)return;
+  bar.innerHTML='';
+  Object.entries(onlinePlayers).sort((a,b)=>b[1].score-a[1].score).forEach(([pid,p])=>{
+    const c=document.createElement('div');
+    c.className='online-player-chip'+(pid===onlineMyId?' me':'');
+    c.innerHTML=`${p.name} <span class="chip-score">${p.score||0}⭐</span>`;
+    bar.appendChild(c);
+  });
+}
+
+function loadOnlineQ(){
+  if(onlineCurrentQ>=onlineQuestions.length){finishOnline();return;}
+  onlineAnswered=false; clearInterval(onlineTimerInt);
+  const q=onlineQuestions[onlineCurrentQ];
+  document.getElementById('q-counter').textContent=`سؤال ${onlineCurrentQ+1} من ${onlineQuestions.length}`;
+  const sl={'إكمال':'✏️ إكمال الجمل','شاذة':'🔍 مفردة شاذة','تناظر':'🔗 تناظر لفظي'};
+  const ql=sl[q.sub]||'🌟';
+  document.getElementById('q-cat-label').textContent=ql;
+  document.getElementById('q-category').textContent=ql;
+  const qt=document.getElementById('q-text');
+  qt.textContent=q.q; qt.className=(q.sub==='إكمال'||q.q.length>80)?'q-text long-text':'q-text';
+  document.getElementById('q-img-wrap').style.display='none';
+  document.getElementById('progress-fill').style.width=`${((onlineCurrentQ+1)/onlineQuestions.length)*100}%`;
+  document.getElementById('score-display').textContent=onlineScore;
+  document.getElementById('feedback-bar').className='feedback-bar';
+  document.getElementById('next-btn').className='next-btn';
+  const grid=document.getElementById('options-grid'); grid.innerHTML='';
+  const sh=q.opts.map((o,i)=>({text:o,orig:i})).sort(()=>Math.random()-0.5);
+  window._shuffled=sh; window._correctOrig=q.ans; window._shuffledCorrectNewIdx=sh.findIndex(o=>o.orig===q.ans);
+  sh.forEach((opt,i)=>{
+    const b=document.createElement('button'); b.className='option-btn'; b.dataset.orig=opt.orig;
+    b.innerHTML=`<span class="option-text">${opt.text}</span><span class="option-letter">${letters[i]}</span>`;
+    b.onclick=()=>answerOnline(b,opt.orig===q.ans,q.ans); grid.appendChild(b);
+  });
+  let tl=15;
+  document.getElementById('timer').textContent=tl;
+  document.getElementById('timer-wrap').className='timer-wrap';
+  onlineTimerInt=setInterval(()=>{
+    tl--; document.getElementById('timer').textContent=tl;
+    document.getElementById('timer-wrap').className=tl<=5?'timer-wrap urgent':'timer-wrap';
+    if(tl<=0){clearInterval(onlineTimerInt);timeoutOnline(q.ans);}
+  },1000);
+}
+
+function answerOnline(btn,isCorrect,correctOrig){
+  if(onlineAnswered)return;
+  onlineAnswered=true; clearInterval(onlineTimerInt);
+  document.querySelectorAll('.option-btn').forEach(b=>{b.disabled=true;if(parseInt(b.dataset.orig)===correctOrig)b.classList.add('correct');});
+  const fb=document.getElementById('feedback-bar');
+  if(isCorrect){
+    btn.classList.add('correct'); onlineScore+=10;
+    document.getElementById('score-display').textContent=onlineScore;
+    onlineRoomRef.child('players/'+onlineMyId+'/score').set(onlineScore);
+    fb.className='feedback-bar correct-fb show'; fb.textContent='✅ إجابة صحيحة! +١٠ نقطة';
+  }else{
+    btn.classList.add('wrong'); fb.className='feedback-bar wrong-fb show'; fb.textContent='❌ إجابة خاطئة! الإجابة الصحيحة باللون الأخضر';
+  }
+  const nb=document.getElementById('next-btn');
+  nb.className='next-btn show'; nb.textContent=onlineCurrentQ>=onlineQuestions.length-1?'🏆 النتائج':'التالي ←';
+  nb.onclick=nextOnlineQ;
+}
+
+function timeoutOnline(correctOrig){
+  if(onlineAnswered)return;
+  onlineAnswered=true;
+  document.querySelectorAll('.option-btn').forEach(b=>{b.disabled=true;if(parseInt(b.dataset.orig)===correctOrig)b.classList.add('correct');});
+  const fb=document.getElementById('feedback-bar');
+  fb.className='feedback-bar wrong-fb show'; fb.textContent='⏰ انتهى الوقت! الإجابة الصحيحة باللون الأخضر';
+  const nb=document.getElementById('next-btn');
+  nb.className='next-btn show'; nb.textContent=onlineCurrentQ>=onlineQuestions.length-1?'🏆 النتائج':'التالي ←';
+  nb.onclick=nextOnlineQ;
+}
+
+function nextOnlineQ(){ onlineCurrentQ++; if(onlineCurrentQ>=onlineQuestions.length)finishOnline(); else loadOnlineQ(); }
+
+async function finishOnline(){
+  clearInterval(onlineTimerInt);
+  await onlineRoomRef.child('players/'+onlineMyId+'/score').set(onlineScore);
+  await onlineRoomRef.child('players/'+onlineMyId+'/finished').set(true);
+  if(onlineIsHost)setTimeout(async()=>{try{await onlineRoomRef.update({status:'finished'});}catch(e){}},2500);
+  showOnlineResults();
+}
+
+function showOnlineResults(){
+  offAll(); clearInterval(onlineTimerInt);
+  document.getElementById('lifelines-bar').style.display='';
+  const bar=document.getElementById('online-players-bar'); if(bar)bar.classList.remove('active');
+  onlineRoomRef.child('players').once('value',snap=>{
+    const pl=snap.val()||{};
+    const sorted=Object.entries(pl).sort((a,b)=>b[1].score-a[1].score);
+    const list=document.getElementById('online-results-list'); list.innerHTML='';
+    const rk=['🥇','🥈','🥉'];
+    sorted.forEach(([pid,p],i)=>{
+      const isMe=pid===onlineMyId;
+      const el=document.createElement('div');
+      el.className='online-result-item'+(i===0?' winner':'');
+      el.innerHTML=`<div class="online-result-rank">${rk[i]||(i+1)+'.'}</div><div class="online-result-name">${p.name}${isMe?' 👈 (أنا)':''}</div><div class="online-result-score">${p.score||0} ⭐</div>`;
+      list.appendChild(el);
+    });
+    const w=sorted[0]; const wme=w&&w[0]===onlineMyId;
+    document.getElementById('online-result-emoji').textContent=wme?'🏆':'🎮';
+    document.getElementById('online-result-title').textContent=wme?`مبروك ${onlineMyName}! أنت الفائز! 🎉`:`الفائز: ${w?w[1].name:'---'} 🏆`;
+    if(wme)launchConfetti();
+    showScreen('screen-online-results');
+  });
+}
+
+function leaveOnlineGame(){
+  offAll(); clearInterval(onlineTimerInt);
+  if(onlineRoomRef&&onlineMyId){
+    onlineRoomRef.child('players/'+onlineMyId).remove().catch(()=>{});
+    if(onlineIsHost)onlineRoomRef.remove().catch(()=>{});
+  }
+  document.getElementById('lifelines-bar').style.display='';
+  const bar=document.getElementById('online-players-bar'); if(bar)bar.classList.remove('active');
+  playMode='solo'; showScreen('screen-menu');
+}
+
+function openWaitingSettings(){
+  document.getElementById('waiting-settings-modal').style.display='flex';
+}
+function closeWaitingSettings(){
+  document.getElementById('waiting-settings-modal').style.display='none';
+}
+function leaveFromWaiting(){
+  closeWaitingSettings();
+  leaveOnlineGame();
+}
+</script>
 
 <!-- Audience modal -->
 <div class="audience-modal" id="audience-modal" style="display:none;" onclick="closeAudience()">
@@ -2525,7 +3210,13 @@ function selectPlayMode(mode) {
 // ─── QUIZ TYPE ────────────────────────────────────────────────────────────────
 function selectType(type) {
   currentType = type;
-  showScreen('screen-timermode');
+  if (playMode === 'online') {
+    const labels = {verbal:'📝 لفظي', quantitative:'🔢 كمي', both:'⚡ لفظي وكمي'};
+    document.getElementById('online-type-label').textContent = 'نوع الأسئلة: ' + (labels[type]||type);
+    showScreen('screen-online-action');
+  } else {
+    showScreen('screen-timermode');
+  }
 }
 
 function selectTimerMode(withTimer) {
@@ -2550,6 +3241,16 @@ function startGame() {
   subTotal   = { 'تناظر': 0, 'شاذة': 0, 'إكمال': 0 };
   questions.forEach(q => { const s = q.sub||'تناظر'; if(subTotal[s]!==undefined) subTotal[s]++; });
 
+  // Team mode: each team plays ALL questions in their own 300s window
+  // teamQuestionSets[0] = questions for team 0, teamQuestionSets[1] = questions for team 1
+  window._teamQuestionSets = [
+    [...pool].sort(() => Math.random() - 0.5),
+    [...pool].sort(() => Math.random() - 0.5)
+  ];
+  window._teamQIndex = [0, 0]; // current question index per team
+  window._teamPhase = 0;       // 0 = team0 playing, 1 = team1 playing, 2 = done
+  window._teamJustSwitched = true; // show countdown at start
+
   // Reset lifelines
   lifelines = { remove: true, audience: true, change: true };
   teamLifelines = [
@@ -2561,15 +3262,34 @@ function startGame() {
   const teamRow = document.getElementById('team-score-row');
   const teamBanner = document.getElementById('team-banner');
   const scoreBadge = document.getElementById('score-badge-wrap');
+  const timerWrap = document.getElementById('timer-wrap');
+  const roundTimerDisplay = document.getElementById('team-round-timer-display');
 
   if (playMode === 'team') {
     teamRow.style.display = 'grid';
     teamBanner.style.display = 'flex';
     scoreBadge.style.display = 'none';
+    timerWrap.style.display = 'none';
+    // Only show round timer and bar if timed mode is on
+    if (timedMode) {
+      roundTimerDisplay.classList.add('active');
+      document.getElementById('team-timer-bar-wrap').classList.add('active');
+      document.getElementById('progress-wrap') && (document.getElementById('progress-wrap').style.display = '');
+    } else {
+      roundTimerDisplay.classList.remove('active');
+      document.getElementById('team-timer-bar-wrap').classList.remove('active');
+      // Hide the progress bar (line that grows) in no-timer team mode
+      const pw = document.querySelector('.progress-wrap');
+      if (pw) pw.style.display = 'none';
+    }
   } else {
     teamRow.style.display = 'none';
     teamBanner.style.display = 'none';
     scoreBadge.style.display = '';
+    timerWrap.style.display = '';
+    roundTimerDisplay.classList.remove('active');
+    const pw = document.querySelector('.progress-wrap');
+    if (pw) pw.style.display = '';
   }
 
   showScreen('screen-quiz');
@@ -2678,13 +3398,87 @@ function changeQuestion() {
   loadQuestion();
 }
 
+// ─── TEAM COUNTDOWN ───────────────────────────────────────────────────────────
+function showTeamCountdown(callback) {
+  const overlay = document.getElementById('team-countdown-overlay');
+  const label   = document.getElementById('countdown-team-label');
+  const subtitle = document.getElementById('countdown-subtitle');
+
+  const isGreen = currentTeam === 0;
+  const colorClass = isGreen ? 'green-num' : 'orange-num';
+  const lblClass   = isGreen ? 'green-lbl' : 'orange-lbl';
+  const teamName   = isGreen ? '🟢 دور الفريق الأخضر' : '🟠 دور الفريق البرتقالي';
+
+  label.textContent = teamName;
+  label.className = 'countdown-team-label ' + lblClass;
+  subtitle.textContent = 'استعد للإجابة!';
+  overlay.style.display = 'flex';
+  overlay.classList.remove('hide');
+
+  // Helper: show a number/text with fresh animation by replacing the element
+  function showStep(text, cls) {
+    const old = document.getElementById('countdown-display');
+    const el = document.createElement('div');
+    el.id = 'countdown-display';
+    el.className = cls;
+    el.textContent = text;
+    old.parentNode.replaceChild(el, old);
+  }
+
+  let count = 3;
+  showStep(count, 'countdown-number ' + colorClass);
+
+  const tick = setInterval(() => {
+    count--;
+    if (count > 0) {
+      showStep(count, 'countdown-number ' + colorClass);
+    } else {
+      clearInterval(tick);
+      showStep('ابدأ!', 'countdown-go');
+      document.getElementById('countdown-subtitle').textContent = 'الوقت يعد الآن...';
+      setTimeout(() => {
+        overlay.classList.add('hide');
+        setTimeout(() => {
+          overlay.style.display = 'none';
+          overlay.classList.remove('hide');
+          callback();
+        }, 400);
+      }, 700);
+    }
+  }, 900);
+}
+
 // ─── QUESTION ─────────────────────────────────────────────────────────────────
 function loadQuestion() {
+  // In team mode with timed: show countdown only at START of each team's turn
+  if (playMode === 'team' && timedMode && window._teamJustSwitched) {
+    window._teamJustSwitched = false;
+    _loadQuestionContent();
+    showTeamCountdown(() => {
+      startTeamTimer();
+    });
+    return;
+  }
+  _loadQuestionContent();
+  if (playMode !== 'team') startTimer();
+}
+
+function _loadQuestionContent() {
   answered = false;
   clearInterval(timerInterval);
 
-  const q = questions[currentQ];
-  document.getElementById('q-counter').textContent = `سؤال ${currentQ+1} من ${questions.length}`;
+  // In team mode, use per-team question set
+  let q;
+  if (playMode === 'team') {
+    const qset = window._teamQuestionSets[currentTeam];
+    const qi   = window._teamQIndex[currentTeam];
+    q = qset[qi % qset.length];
+    window._currentTeamQ = q;
+    document.getElementById('q-counter').textContent = `سؤال ${qi + 1}`;
+  } else {
+    q = questions[currentQ];
+    document.getElementById('q-counter').textContent = `سؤال ${currentQ+1} من ${questions.length}`;
+  }
   const typeLabel = { verbal:'📝 لفظي', quantitative:'🔢 كمي', both:'⚡ لفظي وكمي', shatha:'🔍 مفردة شاذة' };
   const subIcons = { 'تناظر':'🔗 تناظر لفظي', 'شاذة':'🔍 مفردة شاذة', 'إكمال':'✏️ إكمال الجمل' };
   const sub = q.sub || 'تناظر';
@@ -2703,7 +3497,12 @@ function loadQuestion() {
     imgWrap.innerHTML = '';
     imgWrap.style.display = 'none';
   }
-  document.getElementById('progress-fill').style.width = `${((currentQ+1)/questions.length)*100}%`;
+  if (playMode === 'team') {
+    const qi = window._teamQIndex[currentTeam];
+    document.getElementById('progress-fill').style.width = `${Math.min(((qi+1)/20)*100, 100)}%`;
+  } else {
+    document.getElementById('progress-fill').style.width = `${((currentQ+1)/questions.length)*100}%`;
+  }
   document.getElementById('score-display').textContent = score;
   document.getElementById('feedback-bar').className = 'feedback-bar';
   document.getElementById('feedback-bar').textContent = '';
@@ -2745,7 +3544,67 @@ function loadQuestion() {
   // Update lifeline UI
   updateLifelineUI();
 
+  // Team timer bar setup
+  if (playMode === 'team' && timedMode) {
+    const barWrap = document.getElementById('team-timer-bar-wrap');
+    const barFill = document.getElementById('team-timer-bar-fill');
+    barWrap.classList.add('active');
+    barFill.className = 'team-timer-bar-fill' + (currentTeam === 1 ? ' orange' : '');
+    // Start at 100%, will animate when timer starts
+    barFill.style.transition = 'none';
+    barFill.style.width = '100%';
+  } else {
+    document.getElementById('team-timer-bar-wrap').classList.remove('active');
+  }
+}
+
+function startTeamTimer() {
+  const totalTime = 300; // 5 minutes
+  const barFill = document.getElementById('team-timer-bar-fill');
+  const timerDisplay = document.getElementById('team-round-timer-display');
+
+  // Set color class based on team
+  timerDisplay.className = 'team-round-timer-display active ' + (currentTeam === 0 ? 'green-t' : 'orange-t');
+
+  function formatTime(s) {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `⏱ ${m}:${sec.toString().padStart(2, '0')}`;
+  }
+
+  // Reset and animate bar
+  barFill.style.transition = 'none';
+  barFill.style.width = '100%';
+  barFill.offsetWidth; // force reflow
+  barFill.style.transition = `width ${totalTime}s linear`;
+  barFill.style.width = '0%';
+
+  // Start per-question timer (20s each question)
   startTimer();
+
+  // Start the 5-minute team round countdown
+  if (window._teamRoundTimer) clearInterval(window._teamRoundTimer);
+  let roundLeft = totalTime;
+  timerDisplay.textContent = formatTime(roundLeft);
+
+  window._teamRoundTimer = setInterval(() => {
+    roundLeft--;
+    window._teamRoundSeconds = roundLeft;
+    timerDisplay.textContent = formatTime(roundLeft);
+
+    // Urgency at ≤60s
+    if (roundLeft <= 60) {
+      barFill.classList.add('urgent');
+      timerDisplay.className = 'team-round-timer-display active urgent-t';
+    }
+
+    if (roundLeft <= 0) {
+      clearInterval(window._teamRoundTimer);
+      window._teamRoundTimer = null;
+      if (!answered) timeoutAnswer();
+      else switchTeamOrEnd();
+    }
+  }, 1000);
 }
 
 function updateTeamBanner() {
@@ -2766,7 +3625,7 @@ function updateTeamBanner() {
     orangeCard.classList.add('active-team');
     greenCard.classList.remove('active-team');
   }
-  bannerQ.textContent = `سؤال ${currentQ+1}`;
+  bannerQ.textContent = `سؤال ${(window._teamQIndex[currentTeam] || 0) + 1}`;
 }
 
 function startTimer() {
@@ -2789,15 +3648,24 @@ function updateTimerUI() {
 function timeoutAnswer() {
   if (answered) return;
   answered = true;
-  const isShatha = (questions[currentQ].sub === 'شاذة');
+  clearInterval(timerInterval);
+  if (window._teamRoundTimer) { clearInterval(window._teamRoundTimer); window._teamRoundTimer = null; }
+  const q = playMode === 'team' ? window._currentTeamQ : questions[currentQ];
+  const isShatha = (q && q.sub === 'شاذة');
   document.querySelectorAll('.option-btn').forEach(b => {
     b.disabled = true;
     if (parseInt(b.dataset.orig) === window._correctOrig) b.classList.add('correct');
     else if (isShatha) b.classList.add('distractor');
   });
-  showFeedback(false, true);
-  document.getElementById('next-btn').className = 'next-btn show';
-  document.getElementById('next-btn').textContent = getNextBtnLabel();
+  if (playMode === 'team') {
+    showFeedback(false, true);
+    // انتهى وقت الفريق — انتقل للفريق التاني أو أنهِ اللعبة
+    setTimeout(() => switchTeamOrEnd(), 1200);
+  } else {
+    showFeedback(false, true);
+    document.getElementById('next-btn').className = 'next-btn show';
+    document.getElementById('next-btn').textContent = getNextBtnLabel();
+  }
 }
 
 function selectAnswer(btn, isCorrect, correctOrig) {
@@ -2805,7 +3673,8 @@ function selectAnswer(btn, isCorrect, correctOrig) {
   answered = true;
   clearInterval(timerInterval);
 
-  const isShatha = (questions[currentQ].sub === 'شاذة');
+  const q = playMode === 'team' ? window._currentTeamQ : questions[currentQ];
+  const isShatha = (q && q.sub === 'شاذة');
   document.querySelectorAll('.option-btn').forEach(b => {
     b.disabled = true;
     if (parseInt(b.dataset.orig) === correctOrig) b.classList.add('correct');
@@ -2814,13 +3683,13 @@ function selectAnswer(btn, isCorrect, correctOrig) {
 
   if (isCorrect) {
     btn.classList.add('correct');
-    const pts = timedMode ? Math.max(10, Math.round(timeLeft * 7)) : 10;
-    const csub = questions[currentQ].sub || 'تناظر';
+    const pts = 10;
     if (playMode === 'team') {
       teamScores[currentTeam] += pts;
       teamCorrect[currentTeam]++;
       document.getElementById(currentTeam === 0 ? 'green-score' : 'orange-score').textContent = teamScores[currentTeam];
     } else {
+      const csub = questions[currentQ].sub || 'تناظر';
       score += pts; correctCount++;
       if (subCorrect[csub] !== undefined) subCorrect[csub]++;
     }
@@ -2831,15 +3700,51 @@ function selectAnswer(btn, isCorrect, correctOrig) {
     showFeedback(false, false);
   }
 
-  document.getElementById('next-btn').className = 'next-btn show';
-  document.getElementById('next-btn').textContent = getNextBtnLabel();
+  if (playMode === 'team') {
+    if (!timedMode) {
+      // بدون وقت: تناوب سؤال سؤال، أول فريق يصل 10 إجابات صحيحة يفوز
+      if (isCorrect && teamCorrect[currentTeam] >= 10) {
+        setTimeout(() => showResults(), 1200);
+      } else {
+        setTimeout(() => {
+          window._teamQIndex[currentTeam]++;
+          currentTeam = currentTeam === 0 ? 1 : 0;
+          _loadQuestionContent();
+        }, 1500);
+      }
+    } else {
+      // مع وقت: تقدم تلقائي للسؤال التالي
+      setTimeout(() => {
+        window._teamQIndex[currentTeam]++;
+        loadTeamNextQuestion();
+      }, 1500);
+    }
+  } else {
+    document.getElementById('next-btn').className = 'next-btn show';
+    document.getElementById('next-btn').textContent = getNextBtnLabel();
+  }
+}
+
+function loadTeamNextQuestion() {
+  _loadQuestionContent();
+  // التايمر الـ 300 ثانية لا يزال يعمل
+}
+
+function switchTeamOrEnd() {
+  if (window._teamPhase === 0) {
+    // الفريق الأول خلص — دور الفريق الثاني
+    window._teamPhase = 1;
+    currentTeam = 1;
+    window._teamJustSwitched = true;
+    loadQuestion();
+  } else {
+    // كلا الفريقين خلصوا
+    showResults();
+  }
 }
 
 function getNextBtnLabel() {
   if (currentQ === questions.length - 1) return '🏆 النتائج';
-  if (playMode === 'team') {
-    return currentTeam === 0 ? 'دور الفريق البرتقالي 🟠 ←' : 'دور الفريق الأخضر 🟢 ←';
-  }
   return 'التالي ←';
 }
 
@@ -2847,10 +3752,10 @@ function showFeedback(correct, timeout, pts) {
   const fb = document.getElementById('feedback-bar');
   if (timeout) {
     fb.className = 'feedback-bar wrong-fb show';
-    fb.textContent = '⏰ انتهى الوقت! الإجابة الصحيحة باللون الأخضر';
+    fb.textContent = playMode === 'team' ? '⏰ انتهى وقت الفريق!' : '⏰ انتهى الوقت! الإجابة الصحيحة باللون الأخضر';
   } else if (correct) {
     fb.className = 'feedback-bar correct-fb show';
-    fb.textContent = timedMode ? `✅ إجابة صحيحة! +${pts} نقطة (${timeLeft} ثانية متبقية)` : `✅ إجابة صحيحة! +${pts} نقطة`;
+    fb.textContent = `✅ إجابة صحيحة! +${pts} نقطة`;
   } else {
     fb.className = 'feedback-bar wrong-fb show';
     fb.textContent = '❌ إجابة خاطئة! الإجابة الصحيحة باللون الأخضر';
@@ -2858,9 +3763,6 @@ function showFeedback(correct, timeout, pts) {
 }
 
 function nextQuestion() {
-  if (playMode === 'team') {
-    currentTeam = currentTeam === 0 ? 1 : 0; // switch team
-  }
   currentQ++;
   if (currentQ >= questions.length) { showResults(); return; }
   loadQuestion();
@@ -2926,17 +3828,33 @@ function showResults() {
     const gc = document.getElementById('green-result-card');
     const oc = document.getElementById('orange-result-card');
     gc.classList.remove('winner'); oc.classList.remove('winner');
+    // Remove any previous trophy
+    gc.querySelectorAll('.winner-trophy').forEach(e => e.remove());
+    oc.querySelectorAll('.winner-trophy').forEach(e => e.remove());
 
     let emoji, title, winnerText;
+    const noTimerMode = playMode === 'team' && !timedMode;
     if (teamScores[0] > teamScores[1]) {
       gc.classList.add('winner');
+      const trophy = document.createElement('span');
+      trophy.className = 'winner-trophy';
+      trophy.textContent = '🏆';
+      gc.insertBefore(trophy, gc.firstChild);
       emoji = '🏆'; title = 'انتهت المباراة!';
-      winnerText = '🟢 الفريق الأخضر يفوز بالمباراة! 🎉';
+      winnerText = noTimerMode
+        ? '🟢 الفريق الأخضر وصل لـ 10 إجابات صحيحة أولاً! 🎉'
+        : '🟢 الفريق الأخضر يفوز بالمباراة! 🎉';
       launchConfetti();
     } else if (teamScores[1] > teamScores[0]) {
       oc.classList.add('winner');
+      const trophy = document.createElement('span');
+      trophy.className = 'winner-trophy';
+      trophy.textContent = '🏆';
+      oc.insertBefore(trophy, oc.firstChild);
       emoji = '🏆'; title = 'انتهت المباراة!';
-      winnerText = '🟠 الفريق البرتقالي يفوز بالمباراة! 🎉';
+      winnerText = noTimerMode
+        ? '🟠 الفريق البرتقالي وصل لـ 10 إجابات صحيحة أولاً! 🎉'
+        : '🟠 الفريق البرتقالي يفوز بالمباراة! 🎉';
       launchConfetti();
     } else {
       emoji = '🤝'; title = 'انتهت المباراة!';
@@ -2970,6 +3888,115 @@ function launchConfetti() {
 
 createStars();
 
+// ─── BOOK ORBS ANIMATION ──────────────────────────────────────────────────────
+(function initBookOrbs() {
+  const canvas = document.getElementById('book-orbs-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  function resize() {
+    canvas.width  = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  const cx = () => canvas.width  / 2;
+  const cy = () => canvas.height / 2;
+
+  class Orb {
+    constructor(initial) { this.reset(initial); }
+    reset(initial) {
+      // Each orb gets a fixed orbit radius and angle, drifts slowly upward along the ring
+      this.orbitR   = 52 + Math.random() * 30;          // stay outside the book (~40px emoji radius)
+      this.angle    = Math.random() * Math.PI * 2;
+      this.angleSpeed = (Math.random() < 0.5 ? 1 : -1) * (0.002 + Math.random() * 0.003); // slow orbit
+      this.driftY   = -(0.06 + Math.random() * 0.1);    // very gentle upward float
+      this.baseY    = initial ? (Math.random() - 0.5) * 40 : 0; // stagger initial positions
+      this.floatOffset = Math.random() * Math.PI * 2;   // phase for subtle bob
+
+      this.x = cx() + Math.cos(this.angle) * this.orbitR;
+      this.y = cy() + Math.sin(this.angle) * this.orbitR + this.baseY;
+
+      this.size     = 3.5 + Math.random() * 5;
+      this.alpha    = 0;
+      this.maxAlpha = 0.4 + Math.random() * 0.3;
+      this.fadeIn   = 0.008 + Math.random() * 0.008;
+      this.fadeOut  = 0.004 + Math.random() * 0.004;
+      this.peaking  = true;
+      this.traveled = 0;
+      const hue = 188 + Math.random() * 18;
+      this.color = `hsla(${hue},100%,68%,`;
+    }
+    update() {
+      this.angle += this.angleSpeed;
+      this.traveled += Math.abs(this.angleSpeed);
+      this.floatOffset += 0.012;
+      // Orbit position + gentle upward float
+      this.x = cx() + Math.cos(this.angle) * this.orbitR;
+      this.y = cy() + Math.sin(this.angle) * this.orbitR
+               + this.baseY
+               + Math.sin(this.floatOffset) * 5;  // subtle bob
+      this.baseY += this.driftY;  // slowly drift upward
+
+      if (this.peaking) {
+        this.alpha += this.fadeIn;
+        if (this.alpha >= this.maxAlpha) this.peaking = false;
+      } else {
+        this.alpha -= this.fadeOut;
+      }
+      // Reset when faded out OR drifted too far up
+      return this.alpha > 0 && (cy() + this.baseY) > -60;
+    }
+    draw() {
+      // Soft glow halo
+      const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size * 3);
+      g.addColorStop(0,   this.color + this.alpha + ')');
+      g.addColorStop(0.45, this.color + (this.alpha * 0.35) + ')');
+      g.addColorStop(1,   this.color + '0)');
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size * 3, 0, Math.PI * 2);
+      ctx.fillStyle = g;
+      ctx.fill();
+      // Bright core
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size * 0.45, 0, Math.PI * 2);
+      ctx.fillStyle = this.color + Math.min(this.alpha * 2, 1) + ')';
+      ctx.fill();
+    }
+  }
+
+  // Start with only 6 orbs
+  const orbs = Array.from({ length: 6 }, () => new Orb(true));
+
+  function loop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Subtle ambient glow around book center (behind the emoji)
+    const grd = ctx.createRadialGradient(cx(), cy(), 0, cx(), cy(), 58);
+    grd.addColorStop(0,   'rgba(6,182,212,0.07)');
+    grd.addColorStop(1,   'rgba(6,182,212,0)');
+    ctx.beginPath();
+    ctx.arc(cx(), cy(), 58, 0, Math.PI * 2);
+    ctx.fillStyle = grd;
+    ctx.fill();
+
+    for (let i = orbs.length - 1; i >= 0; i--) {
+      const alive = orbs[i].update();
+      orbs[i].draw();
+      if (!alive) orbs[i].reset(false);
+    }
+
+    // Occasionally add one more, but cap at 8
+    if (Math.random() < 0.004 && orbs.length < 8) {
+      orbs.push(new Orb(false));
+    }
+
+    requestAnimationFrame(loop);
+  }
+  loop();
+})();
+
 // ─── SETTINGS ─────────────────────────────────────────────────────────────────
 function openSettings() {
   document.getElementById('settings-modal').style.display = 'flex';
@@ -2986,5 +4013,17 @@ function goHomeFromSettings() {
   showScreen('screen-menu');
 }
 </script>
+
+<!-- Waiting Room Settings Modal -->
+<div class="settings-overlay" id="waiting-settings-modal" style="display:none;" onclick="closeWaitingSettings()">
+  <div class="settings-box" onclick="event.stopPropagation()">
+    <div class="settings-title">⚙️ الإعدادات</div>
+    <div class="settings-btns">
+      <button class="settings-continue-btn" onclick="closeWaitingSettings()">▶️ استمرار</button>
+      <button class="settings-home-btn" onclick="leaveFromWaiting()">🏠 الصفحة الرئيسية</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
