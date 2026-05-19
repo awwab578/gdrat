@@ -1114,6 +1114,19 @@
   .waiting-player-name { font-size:15px; font-weight:700; flex:1; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .waiting-player-badge { font-size:12px; color:var(--muted); white-space:nowrap; }
   .waiting-player-item.host .waiting-player-badge { color:var(--gold); font-weight:700; }
+  .waiting-player-item.reconnecting { border-color:rgba(251,191,36,0.4); background:rgba(251,191,36,0.06); opacity:0.75; }
+  .reconnecting-indicator { display:flex; align-items:center; gap:5px; font-size:11px; color:#fbbf24; font-weight:700; white-space:nowrap; }
+  .reconnecting-spinner { width:10px; height:10px; border:2px solid rgba(251,191,36,0.3); border-top-color:#fbbf24; border-radius:50%; animation:spin 0.7s linear infinite; flex-shrink:0; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .player-actions-btn { background:none; border:1px solid rgba(255,255,255,0.1); border-radius:7px; cursor:pointer; color:var(--muted); font-size:14px; padding:3px 7px; line-height:1; transition:all 0.2s; flex-shrink:0; }
+  .player-actions-btn:hover { border-color:rgba(239,68,68,0.4); color:#fca5a5; background:rgba(239,68,68,0.08); }
+  .player-actions-menu { position:absolute; left:0; top:calc(100% + 4px); background:#131729; border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:5px; z-index:99; min-width:150px; box-shadow:0 8px 24px rgba(0,0,0,0.5); }
+  .pam-item { display:flex; align-items:center; gap:8px; width:100%; background:none; border:none; cursor:pointer; font-family:'Cairo',sans-serif; font-size:13px; font-weight:700; padding:8px 10px; border-radius:8px; transition:background 0.15s; text-align:right; }
+  .pam-item:hover { background:rgba(255,255,255,0.07); }
+  .pam-item.kick { color:#fca5a5; }
+  .pam-item.kick:hover { background:rgba(239,68,68,0.15); }
+  .pam-item.ban { color:#fb923c; }
+  .pam-item.ban:hover { background:rgba(251,146,60,0.15); }
   .waiting-count { font-size:14px; color:var(--muted); margin-bottom:8px; }
   .waiting-count span { color:#38bdf8; font-weight:700; }
   .btn-start-game {
@@ -1837,6 +1850,35 @@ function setQuestionCount(count, duration) {
   });
 }
 
+// ─── PRESENCE / RECONNECT ────────────────────────────────────────────────────
+const RECONNECT_TIMEOUT = 10000; // 10 ثواني
+let _presenceTimer = null;
+
+function setupPresence(roomRef, myId) {
+  const connRef = db.ref('.info/connected');
+  connRef.on('value', snap => {
+    const isConnected = snap.val() === true;
+    if (!isConnected) {
+      // انقطع الاتصال — ضع علامة "reconnecting"
+      roomRef.child('players/' + myId + '/reconnecting').set(true).catch(() => {});
+      // بدّل الـ onDisconnect — لا تحذف نفسك فوراً بل بعد 10 ثواني
+      roomRef.child('players/' + myId).onDisconnect().remove();
+      // مؤقت محلي: لو ما رجعنا خلال 10 ثواني → اخرج من الغرفة
+      _presenceTimer = setTimeout(() => {
+        offAll();
+        leaveOnlineGame();
+      }, RECONNECT_TIMEOUT);
+    } else {
+      // عاد الاتصال — امسح علامة "reconnecting" وألغ المؤقت
+      clearTimeout(_presenceTimer);
+      _presenceTimer = null;
+      roomRef.child('players/' + myId + '/reconnecting').set(false).catch(() => {});
+      // أعد ضبط onDisconnect الأصلي
+      roomRef.child('players/' + myId).onDisconnect().remove();
+    }
+  });
+}
+
 async function createRoom(){
   const name=(document.getElementById('create-name').value||'').trim();
   const roomId=(document.getElementById('create-room-id').value||'').trim().toUpperCase().replace(/\s/g,'');
@@ -1859,6 +1901,9 @@ async function createRoom(){
     roomRef.onDisconnect().remove();
     roomRef.child('players/'+onlineMyId).onDisconnect().remove();
     onlineRoomRef=roomRef;
+    setupPresence(roomRef, onlineMyId);
+    // راقب الاتصال لإظهار "جار الاتصال"
+    setupPresence(roomRef, onlineMyId);
     // نظّف الغرف القديمة في الخلفية
     cleanupStaleRooms();
     // راقب الغرفة — احذفها إذا فضلت فارغة
@@ -2014,6 +2059,8 @@ async function joinRoom(){
     const d=snap.val();
     if(d.status==='playing'||d.status==='finished'){showErr('join-error','اللعبة بدأت بالفعل!');btn.innerHTML='🚪 دخول الغرفة';btn.disabled=false;return;}
     if(Object.keys(d.players||{}).length>=100){showErr('join-error','الغرفة ممتلئة! (الحد الأقصى ١٠٠ لاعب)');btn.innerHTML='🚪 دخول الغرفة';btn.disabled=false;return;}
+    // تحقق من الحظر المحلي
+    try { if(localStorage.getItem('banned_'+roomId)==='1'){showErr('join-error','أنت محظور من هذه الغرفة!');btn.innerHTML='🚪 دخول الغرفة';btn.disabled=false;return;} } catch(e){}
     // تحقق من تكرار الاسم داخل الغرفة
     const existingNames = Object.values(d.players||{}).map(p=>p.name.trim().replace(/\s+/g,'').toLowerCase());
     if(existingNames.includes(name.trim().replace(/\s+/g,'').toLowerCase())){showErr('join-error','هذا الاسم موجود بالفعل في الغرفة! اختر اسماً آخر.');btn.innerHTML='🚪 دخول الغرفة';btn.disabled=false;return;}
@@ -2021,6 +2068,8 @@ async function joinRoom(){
     await roomRef.child('players/'+onlineMyId).set({name,score:0,joinedAt:Date.now()});
     roomRef.child('players/'+onlineMyId).onDisconnect().remove();
     onlineRoomRef=roomRef;
+    // راقب الاتصال لإظهار "جار الاتصال"
+    setupPresence(roomRef, onlineMyId);
     btn.innerHTML='🚪 دخول الغرفة'; btn.disabled=false;
     enterWaitingRoom();
   }catch(e){showErr('join-error','خطأ في الاتصال! تأكد من الإنترنت.');btn.innerHTML='🚪 دخول الغرفة';btn.disabled=false;}
@@ -2179,9 +2228,16 @@ function enterWaitingRoom(){
     onlineUnsubs.push(()=>onlineRoomRef.child('status').off('value',sh));
     // راقب إذا طُرد هذا اللاعب
     const kh=onlineRoomRef.child('kicked/'+onlineMyId).on('value',snap=>{
-      if(snap.val()===true){
+      const val = snap.val();
+      if(val===true){
         offAll();
         alert('تم طردك من الغرفة من قِبل الرئيس!');
+        leaveOnlineGame();
+      } else if(val==='banned'){
+        // خزّن الحظر محلياً
+        try { localStorage.setItem('banned_'+onlineRoomId, '1'); } catch(e){}
+        offAll();
+        alert('تم حظرك من هذه الغرفة!');
         leaveOnlineGame();
       }
     });
@@ -2199,15 +2255,21 @@ function renderWaiting(){
       const isHost=pid===hostId, isMe=pid===onlineMyId;
       const el=document.createElement('div');
       el.className='waiting-player-item'+(isHost?' host':'');
+      const isReconnecting = p.reconnecting === true;
+      if (isReconnecting) el.classList.add('reconnecting');
       const kickBtn = (onlineIsHost && !isHost && !isMe)
         ? `<div style="position:relative;display:inline-block;">
-            <button onclick="toggleKickMenu('${pid}')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:18px;padding:2px 6px;border-radius:6px;line-height:1;" title="خيارات">⋮</button>
-            <div id="kick-menu-${pid}" style="display:none;position:absolute;left:0;top:26px;background:#1a1f3a;border:1px solid rgba(239,68,68,0.4);border-radius:10px;padding:6px 0;z-index:99;min-width:120px;box-shadow:0 4px 16px rgba(0,0,0,0.4);">
-              <button onclick="kickPlayer('${pid}','${p.name}')" style="display:block;width:100%;background:none;border:none;cursor:pointer;color:#fca5a5;font-family:'Cairo',sans-serif;font-size:13px;font-weight:700;padding:8px 14px;text-align:right;">🚫 طرد من الغرفة</button>
+            <button class="player-actions-btn" onclick="toggleKickMenu('${pid}')" title="خيارات">⋮</button>
+            <div id="kick-menu-${pid}" class="player-actions-menu" style="display:none;">
+              <button class="pam-item kick" onclick="kickPlayer('${pid}','${p.name}')">🚫 طرد من الغرفة</button>
+              <button class="pam-item ban" onclick="banPlayer('${pid}','${p.name}')">🔨 حظر</button>
             </div>
            </div>`
         : '';
-      el.innerHTML=`<div class="waiting-player-avatar">${p.name.charAt(0).toUpperCase()}</div><div class="waiting-player-name">${p.name}${isMe?' (أنا)':''}</div><div class="waiting-player-badge">${isHost?'👑 رئيس':'🎮 لاعب'}</div>${kickBtn}`;
+      const reconnBadge = isReconnecting
+        ? `<div class="reconnecting-indicator"><div class="reconnecting-spinner"></div>جار الاتصال...</div>`
+        : `<div class="waiting-player-badge">${isHost?'👑 رئيس':'🎮 لاعب'}</div>`;
+      el.innerHTML=`<div class="waiting-player-avatar">${p.name.charAt(0).toUpperCase()}</div><div class="waiting-player-name">${p.name}${isMe?' (أنا)':''}</div>${reconnBadge}${kickBtn}`;
       list.appendChild(el);
     });
     const sb=document.getElementById('btn-start-online'), pe=document.getElementById('waiting-pulse');
@@ -2248,6 +2310,25 @@ async function kickPlayer(pid, name) {
       } catch(e) { console.error('kick cleanup error', e); }
     }, 2000);
   } catch(e) { console.error('kick error', e); }
+}
+
+// ─── BAN PLAYER ──────────────────────────────────────────────────────────────
+async function banPlayer(pid, name) {
+  document.querySelectorAll('[id^="kick-menu-"]').forEach(m => m.style.display = 'none');
+  if (!onlineRoomRef || !onlineIsHost) return;
+  if (!confirm(`هل تريد حظر "${name}"؟ لن يتمكن من الدخول مجدداً لهذه الغرفة.`)) return;
+  try {
+    // سجّل الحظر بالـ id الخاص باللاعب
+    await onlineRoomRef.child('banned/'+pid).set({ name, bannedAt: Date.now() });
+    // طرده فوراً
+    await onlineRoomRef.child('kicked/'+pid).set('banned');
+    setTimeout(async () => {
+      try {
+        await onlineRoomRef.child('players/'+pid).remove();
+        await onlineRoomRef.child('kicked/'+pid).remove();
+      } catch(e) {}
+    }, 2000);
+  } catch(e) { console.error('ban error', e); }
 }
 
 // ─── START (HOST) ─────────────────────────────────────────────────────────────
