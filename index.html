@@ -2181,8 +2181,12 @@ function enterWaitingRoom(){
     const kh=onlineRoomRef.child('kicked/'+onlineMyId).on('value',snap=>{
       if(snap.val()===true){
         offAll();
+        // احذف نفسك من اللاعبين فقط ولا تحذف الغرفة
+        if(onlineRoomRef && onlineMyId){
+          onlineRoomRef.child('players/'+onlineMyId).remove().catch(()=>{});
+        }
         alert('تم طردك من الغرفة من قِبل الرئيس!');
-        leaveOnlineGame();
+        leaveOnlineGameKicked();
       }
     });
     onlineUnsubs.push(()=>onlineRoomRef.child('kicked/'+onlineMyId).off('value',kh));
@@ -2239,9 +2243,16 @@ async function kickPlayer(pid, name) {
   try {
     // أضف علامة طرد حتى يعرف اللاعب أنه طُرد
     await onlineRoomRef.child('kicked/'+pid).set(true);
-    // احذف اللاعب من القائمة
-    await onlineRoomRef.child('players/'+pid).remove();
+    // انتظر ثانيتين حتى يستقبل اللاعب إشعار الطرد ويحذف نفسه
+    // ثم احذفه من القائمة للتأكد (في حال ما وصله الإشعار)
+    setTimeout(async () => {
+      try {
+        await onlineRoomRef.child('players/'+pid).remove();
+        await onlineRoomRef.child('kicked/'+pid).remove();
+      } catch(e) {}
+    }, 2000);
   } catch(e) { console.error('kick error', e); }
+}
 }
 
 // ─── START (HOST) ─────────────────────────────────────────────────────────────
@@ -2589,6 +2600,20 @@ function leaveOnlineGame(){
   playMode='solo'; showScreen('screen-menu');
 }
 
+// دالة خاصة للاعب المطرود — تعيده للقائمة بدون حذف الغرفة
+function leaveOnlineGameKicked(){
+  offAll(); clearInterval(onlineTimerInt); clearInterval(onlineSharedTimerInt);
+  // لا نحذف الغرفة هنا — الغرفة تخص الرئيس والبقية
+  onlineRoomRef=null; onlineMyId=null; onlineIsHost=false;
+  document.getElementById('lifelines-bar').style.display='';
+  const bar=document.getElementById('online-players-bar'); if(bar)bar.classList.remove('active');
+  const bt=document.getElementById('online-big-timer'); if(bt)bt.classList.remove('active');
+  const tl=document.getElementById('online-timer-label'); if(tl)tl.style.display='none';
+  document.getElementById('score-badge-wrap').style.display='';
+  document.getElementById('timer-wrap').style.display='';
+  playMode='solo'; showScreen('screen-menu');
+}
+
 function openWaitingSettings(){
   document.getElementById('waiting-settings-modal').style.display='flex';
   const wrap = document.getElementById('privacy-toggle-wrap');
@@ -2601,7 +2626,20 @@ function closeWaitingSettings(){
 }
 function leaveFromWaiting(){
   closeWaitingSettings();
-  leaveOnlineGame();
+  if(onlineIsHost){
+    // الرئيس يخرج = تُحذف الغرفة كاملاً
+    leaveOnlineGame();
+  } else {
+    // اللاعب العادي يخرج = يُحذف من اللاعبين فقط
+    offAll(); clearInterval(onlineTimerInt); clearInterval(onlineSharedTimerInt);
+    if(onlineRoomRef && onlineMyId){
+      onlineRoomRef.child('players/'+onlineMyId).remove().catch(()=>{});
+    }
+    onlineRoomRef=null; onlineMyId=null; onlineIsHost=false;
+    document.getElementById('lifelines-bar').style.display='';
+    const bar=document.getElementById('online-players-bar'); if(bar)bar.classList.remove('active');
+    playMode='solo'; showScreen('screen-menu');
+  }
 }
 
 // ─── ROOM PRIVACY TOGGLE ──────────────────────────────────────────────────────
