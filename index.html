@@ -1937,7 +1937,9 @@ async function refreshRoomsList() {
     loading.style.display = 'none';
     const all = snap.val() || {};
     const waiting = Object.entries(all).filter(([id, r]) => {
-      if (r.status !== 'waiting' || r.private) return false;
+      if (r.status !== 'waiting') return false;
+      // الغرفة الخاصة (private === true أو private === undefined) لا تظهر في الاستعراض
+      if (r.private !== false) return false;
       if (browseFilter === 'all') return true;
       return r.type === browseFilter;
     });
@@ -1986,6 +1988,15 @@ async function joinRoomFromBrowse(roomId, room) {
     if (!snap.exists()) { showErr('browse-error', 'الغرفة لم تعد موجودة!'); refreshRoomsList(); return; }
     const d = snap.val();
     if (d.status !== 'waiting') { showErr('browse-error', 'اللعبة بدأت بالفعل في هذه الغرفة!'); refreshRoomsList(); return; }
+    // تحقق إذا كان هذا اللاعب مطروداً (بالاسم)
+    const kickedSnapB = await roomRef.child('kicked').once('value');
+    const kickedListB = kickedSnapB.val() || {};
+    const kickedNamesB = [];
+    for(const kId of Object.keys(kickedListB)){
+      const kPlayer = d.players?.[kId];
+      if(kPlayer) kickedNamesB.push(kPlayer.name.trim().replace(/\s+/g,'').toLowerCase());
+    }
+    if(kickedNamesB.includes(name.trim().replace(/\s+/g,'').toLowerCase())){ showErr('browse-error', 'تم طردك من هذه الغرفة ولا يمكنك الدخول مجدداً!'); return; }
     if (Object.keys(d.players || {}).length >= 100) { showErr('browse-error', 'الغرفة ممتلئة!'); return; }
     const existingNames = Object.values(d.players || {}).map(p => p.name.trim().replace(/\s+/g,'').toLowerCase());
     if (existingNames.includes(name.trim().replace(/\s+/g,'').toLowerCase())) { showErr('browse-error', 'هذا الاسم موجود بالفعل! اختر اسماً آخر.'); return; }
@@ -2013,6 +2024,15 @@ async function joinRoom(){
     if(!snap.exists()){showErr('join-error','الغرفة غير موجودة!');btn.innerHTML='🚪 دخول الغرفة';btn.disabled=false;return;}
     const d=snap.val();
     if(d.status==='playing'||d.status==='finished'){showErr('join-error','اللعبة بدأت بالفعل!');btn.innerHTML='🚪 دخول الغرفة';btn.disabled=false;return;}
+    // تحقق إذا كان هذا اللاعب مطروداً (بالاسم)
+    const kickedSnap = await roomRef.child('kicked').once('value');
+    const kickedList = kickedSnap.val() || {};
+    const kickedNames = [];
+    for(const kId of Object.keys(kickedList)){
+      const kPlayer = d.players?.[kId];
+      if(kPlayer) kickedNames.push(kPlayer.name.trim().replace(/\s+/g,'').toLowerCase());
+    }
+    if(kickedNames.includes(name.trim().replace(/\s+/g,'').toLowerCase())){showErr('join-error','تم طردك من هذه الغرفة ولا يمكنك الدخول مجدداً!');btn.innerHTML='🚪 دخول الغرفة';btn.disabled=false;return;}
     if(Object.keys(d.players||{}).length>=100){showErr('join-error','الغرفة ممتلئة! (الحد الأقصى ١٠٠ لاعب)');btn.innerHTML='🚪 دخول الغرفة';btn.disabled=false;return;}
     // تحقق من تكرار الاسم داخل الغرفة
     const existingNames = Object.values(d.players||{}).map(p=>p.name.trim().replace(/\s+/g,'').toLowerCase());
@@ -2241,16 +2261,10 @@ async function kickPlayer(pid, name) {
   document.querySelectorAll('[id^="kick-menu-"]').forEach(m => m.style.display = 'none');
   if (!onlineRoomRef || !onlineIsHost) return;
   try {
-    // أضف علامة طرد حتى يعرف اللاعب أنه طُرد
+    // أضف علامة طرد — تبقى دائمة حتى لا يتمكن المطرود من الدخول مجدداً
     await onlineRoomRef.child('kicked/'+pid).set(true);
-    // انتظر ثانيتين حتى يستقبل اللاعب إشعار الطرد ويحذف نفسه
-    // ثم احذفه من القائمة للتأكد (في حال ما وصله الإشعار)
-    setTimeout(async () => {
-      try {
-        await onlineRoomRef.child('players/'+pid).remove();
-        await onlineRoomRef.child('kicked/'+pid).remove();
-      } catch(e) {}
-    }, 2000);
+    // احذف اللاعب من قائمة اللاعبين فوراً
+    await onlineRoomRef.child('players/'+pid).remove();
   } catch(e) { console.error('kick error', e); }
 }
 }
@@ -2618,8 +2632,13 @@ function openWaitingSettings(){
   document.getElementById('waiting-settings-modal').style.display='flex';
   const wrap = document.getElementById('privacy-toggle-wrap');
   if(wrap) wrap.style.display = onlineIsHost ? 'block' : 'none';
-  // استخدم setTimeout لضمان تطبيق الـ display قبل رسم الحالة
-  if(onlineIsHost) setTimeout(renderPrivacyToggle, 0);
+  if(onlineIsHost && onlineRoomRef) {
+    // اقرأ الحالة الفعلية من Firebase وحدّث المتغير المحلي
+    onlineRoomRef.child('private').once('value', snap => {
+      roomIsPrivate = snap.val() !== false;
+      renderPrivacyToggle();
+    });
+  }
 }
 function closeWaitingSettings(){
   document.getElementById('waiting-settings-modal').style.display='none';
