@@ -1589,7 +1589,7 @@
       <button class="settings-icon-btn" onclick="openWaitingSettings()" title="الإعدادات" style="position:absolute;top:-8px;left:12px;">⚙️</button>
       <div class="waiting-room-name" id="waiting-room-name">🏠 غرفة: ---</div>
       <div class="waiting-room-code">شارك الرمز أعلاه مع أصدقائك 👆</div>
-      <div class="waiting-count">اللاعبون: <span id="waiting-player-count">0</span> / ١٠</div>
+      <div class="waiting-count">اللاعبون: <span id="waiting-player-count">0</span> / ١٠٠</div>
       <div class="waiting-players-list" id="waiting-players-list"></div>
       <button class="btn-start-game" id="btn-start-online" onclick="startOnlineGame()">🚀 ابدأ اللعبة!</button>
       <div class="waiting-pulse" id="waiting-pulse">
@@ -1674,7 +1674,7 @@ async function createRoom(){
     await loadFirebase();
     const roomRef=db.ref('rooms/'+roomId);
     const snap=await roomRef.once('value');
-    if(snap.exists()){showErr('create-error','هذا الاسم مأخوذ! جرّب اسماً آخر.');btn.innerHTML='🏠 إنشاء الغرفة';btn.disabled=false;return;}
+    if(snap.exists()){showErr('create-error','اسم الغرفة موجود بالفعل! جرّب اسماً آخر للغرفة.');btn.innerHTML='🏠 إنشاء الغرفة';btn.disabled=false;return;}
     onlineMyId='p_'+Date.now(); onlineMyName=name; onlineRoomId=roomId; onlineIsHost=true;
     await roomRef.set({host:onlineMyId,type:currentType,status:'waiting',createdAt:Date.now(),players:{[onlineMyId]:{name,score:0,joinedAt:Date.now()}}});
     roomRef.child('players/'+onlineMyId).onDisconnect().remove();
@@ -1700,7 +1700,10 @@ async function joinRoom(){
     if(!snap.exists()){showErr('join-error','الغرفة غير موجودة!');btn.innerHTML='🚪 دخول الغرفة';btn.disabled=false;return;}
     const d=snap.val();
     if(d.status==='playing'||d.status==='finished'){showErr('join-error','اللعبة بدأت بالفعل!');btn.innerHTML='🚪 دخول الغرفة';btn.disabled=false;return;}
-    if(Object.keys(d.players||{}).length>=10){showErr('join-error','الغرفة ممتلئة!');btn.innerHTML='🚪 دخول الغرفة';btn.disabled=false;return;}
+    if(Object.keys(d.players||{}).length>=100){showErr('join-error','الغرفة ممتلئة! (الحد الأقصى ١٠٠ لاعب)');btn.innerHTML='🚪 دخول الغرفة';btn.disabled=false;return;}
+    // تحقق من تكرار الاسم داخل الغرفة
+    const existingNames = Object.values(d.players||{}).map(p=>p.name.trim().toLowerCase());
+    if(existingNames.includes(name.toLowerCase())){showErr('join-error','هذا الاسم موجود بالفعل في الغرفة! اختر اسماً آخر.');btn.innerHTML='🚪 دخول الغرفة';btn.disabled=false;return;}
     onlineMyId='p_'+Date.now(); onlineMyName=name; onlineRoomId=roomId; onlineIsHost=false; currentType=d.type||'verbal';
     await roomRef.child('players/'+onlineMyId).set({name,score:0,joinedAt:Date.now()});
     roomRef.child('players/'+onlineMyId).onDisconnect().remove();
@@ -1755,10 +1758,13 @@ async function startOnlineGame(){
     startedAt: firebase.database.ServerValue.TIMESTAMP,
     gameDuration: 120
   });
-  // اقرأ الوقت الفعلي من السيرفر بعد الكتابة لضمان التزامن
+  // اقرأ الـ offset وحساب الوقت بدقة
+  const offsetSnap = await db.ref('.info/serverTimeOffset').once('value');
+  const offset = offsetSnap.val() || 0;
   const startSnap = await onlineRoomRef.child('startedAt').once('value');
-  const actualStart = startSnap.val() || Date.now();
-  const elapsedHost = Math.floor((Date.now() - actualStart) / 1000);
+  const actualStart = startSnap.val() || (Date.now() + offset);
+  const localNow = Date.now() + offset;
+  const elapsedHost = Math.floor((localNow - actualStart) / 1000);
   onlineTimeLeft = Math.max(0, 120 - elapsedHost);
   onlineQuestions=sp;
   startOnlineQuiz();
@@ -1769,10 +1775,13 @@ async function loadOnlineGameData(){
   if(!snap.val())return;
   const d=snap.val();
   onlineQuestions=d.questions||[];
-  // احسب الوقت المتبقي بناءً على وقت البداية
-  const startedAt = d.startedAt || Date.now();
+  // احسب الـ offset بين ساعة الجهاز وساعة Firebase للتزامن الدقيق
+  const offsetSnap = await db.ref('.info/serverTimeOffset').once('value');
+  const offset = offsetSnap.val() || 0;
+  const localNow = Date.now() + offset; // الوقت المعدَّل بحسب وقت السيرفر
+  const startedAt = d.startedAt || localNow;
   const duration = d.gameDuration || 120;
-  const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+  const elapsed = Math.floor((localNow - startedAt) / 1000);
   onlineTimeLeft = Math.max(0, duration - elapsed);
   startOnlineQuiz();
 }
@@ -1830,6 +1839,8 @@ function startOnlineQuiz(){
       // الرئيس يغير الحالة إلى منتهية ليُعلم باقي اللاعبين
       if(onlineIsHost){
         onlineRoomRef.update({status:'finished'}).catch(()=>{});
+        // احذف الغرفة فوراً عند انتهاء اللعبة
+        onlineRoomRef.remove().catch(()=>{});
       }
       showOnlineResults();
     }
@@ -1999,8 +2010,8 @@ function showOnlineResults(){
 function leaveOnlineGame(){
   offAll(); clearInterval(onlineTimerInt); clearInterval(onlineSharedTimerInt);
   if(onlineRoomRef&&onlineMyId){
-    onlineRoomRef.child('players/'+onlineMyId).remove().catch(()=>{});
-    if(onlineIsHost)onlineRoomRef.remove().catch(()=>{});
+    // احذف الغرفة بالكامل عند انتهاء اللعبة (لجميع اللاعبين لا الرئيس فقط)
+    onlineRoomRef.remove().catch(()=>{});
   }
   document.getElementById('lifelines-bar').style.display='';
   const bar=document.getElementById('online-players-bar'); if(bar)bar.classList.remove('active');
