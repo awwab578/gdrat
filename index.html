@@ -1853,27 +1853,32 @@ function setQuestionCount(count, duration) {
 // ─── PRESENCE / RECONNECT ────────────────────────────────────────────────────
 const RECONNECT_TIMEOUT = 10000; // 10 ثواني
 let _presenceTimer = null;
+let _presenceSetup = false; // نمنع الاستماع المكرر
 
 function setupPresence(roomRef, myId) {
+  if (_presenceSetup) return;
+  _presenceSetup = true;
   const connRef = db.ref('.info/connected');
   connRef.on('value', snap => {
     const isConnected = snap.val() === true;
     if (!isConnected) {
-      // انقطع الاتصال — ضع علامة "reconnecting"
+      // ألغ الـ onDisconnect الفوري حتى لا يُحذف اللاعب مباشرة
+      roomRef.child('players/' + myId).onDisconnect().cancel().catch(() => {});
+      // ضع علامة reconnecting
       roomRef.child('players/' + myId + '/reconnecting').set(true).catch(() => {});
-      // بدّل الـ onDisconnect — لا تحذف نفسك فوراً بل بعد 10 ثواني
-      roomRef.child('players/' + myId).onDisconnect().remove();
-      // مؤقت محلي: لو ما رجعنا خلال 10 ثواني → اخرج من الغرفة
+      // بعد 10 ثواني احذف اللاعب واخرج
+      clearTimeout(_presenceTimer);
       _presenceTimer = setTimeout(() => {
+        roomRef.child('players/' + myId).remove().catch(() => {});
         offAll();
         leaveOnlineGame();
       }, RECONNECT_TIMEOUT);
     } else {
-      // عاد الاتصال — امسح علامة "reconnecting" وألغ المؤقت
+      // عاد الاتصال — امسح المؤقت والعلامة
       clearTimeout(_presenceTimer);
       _presenceTimer = null;
       roomRef.child('players/' + myId + '/reconnecting').set(false).catch(() => {});
-      // أعد ضبط onDisconnect الأصلي
+      // أعد تفعيل onDisconnect الطبيعي
       roomRef.child('players/' + myId).onDisconnect().remove();
     }
   });
@@ -1901,8 +1906,6 @@ async function createRoom(){
     roomRef.onDisconnect().remove();
     roomRef.child('players/'+onlineMyId).onDisconnect().remove();
     onlineRoomRef=roomRef;
-    setupPresence(roomRef, onlineMyId);
-    // راقب الاتصال لإظهار "جار الاتصال"
     setupPresence(roomRef, onlineMyId);
     // نظّف الغرف القديمة في الخلفية
     cleanupStaleRooms();
@@ -2059,8 +2062,18 @@ async function joinRoom(){
     const d=snap.val();
     if(d.status==='playing'||d.status==='finished'){showErr('join-error','اللعبة بدأت بالفعل!');btn.innerHTML='🚪 دخول الغرفة';btn.disabled=false;return;}
     if(Object.keys(d.players||{}).length>=100){showErr('join-error','الغرفة ممتلئة! (الحد الأقصى ١٠٠ لاعب)');btn.innerHTML='🚪 دخول الغرفة';btn.disabled=false;return;}
-    // تحقق من الحظر المحلي
+    // تحقق من الحظر المحلي (بالـ id القديم)
     try { if(localStorage.getItem('banned_'+roomId)==='1'){showErr('join-error','أنت محظور من هذه الغرفة!');btn.innerHTML='🚪 دخول الغرفة';btn.disabled=false;return;} } catch(e){}
+    // تحقق من الحظر عبر Firebase (بالاسم) — يمنع التحايل بالدخول من جلسة جديدة
+    const bannedSnap = await roomRef.child('banned').once('value');
+    const bannedData = bannedSnap.val() || {};
+    const nameLower = name.trim().replace(/\s+/g,'').toLowerCase();
+    const isBannedByName = Object.values(bannedData).some(b => b.name && b.name.trim().replace(/\s+/g,'').toLowerCase() === nameLower);
+    if (isBannedByName) {
+      try { localStorage.setItem('banned_'+roomId, '1'); } catch(e){}
+      showErr('join-error','أنت محظور من هذه الغرفة!');
+      btn.innerHTML='🚪 دخول الغرفة'; btn.disabled=false; return;
+    }
     // تحقق من تكرار الاسم داخل الغرفة
     const existingNames = Object.values(d.players||{}).map(p=>p.name.trim().replace(/\s+/g,'').toLowerCase());
     if(existingNames.includes(name.trim().replace(/\s+/g,'').toLowerCase())){showErr('join-error','هذا الاسم موجود بالفعل في الغرفة! اختر اسماً آخر.');btn.innerHTML='🚪 دخول الغرفة';btn.disabled=false;return;}
@@ -2662,6 +2675,8 @@ function showOnlineResults(){
 
 function leaveOnlineGame(){
   offAll(); clearInterval(onlineTimerInt); clearInterval(onlineSharedTimerInt);
+  // إعادة تعيين حالة الـ presence حتى تعمل صح في الجلسة التالية
+  clearTimeout(_presenceTimer); _presenceTimer = null; _presenceSetup = false;
   if(onlineRoomRef&&onlineMyId){
     if(onlineIsHost){
       // الرئيس يحذف الغرفة كاملة
