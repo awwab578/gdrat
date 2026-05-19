@@ -1524,7 +1524,7 @@
   <!-- ══ ONLINE: صنع أو دخول غرفة ══ -->
   <div class="screen" id="screen-online-action">
     <div class="room-card">
-      <button class="back-btn-small" onclick="showScreen('screen-playmode')">→</button>
+      <button class="back-btn-small" onclick="showScreen('screen-type')">→</button>
       <span style="font-size:64px;display:block;margin-bottom:14px;animation:bounce 2s ease-in-out infinite;">🌐</span>
       <h2 class="room-title">جماعي أونلاين</h2>
       <p class="room-sub" id="online-type-label">نوع الأسئلة: لفظي</p>
@@ -1937,9 +1937,7 @@ async function refreshRoomsList() {
     loading.style.display = 'none';
     const all = snap.val() || {};
     const waiting = Object.entries(all).filter(([id, r]) => {
-      if (r.status !== 'waiting') return false;
-      // الغرفة الخاصة (private === true أو private === undefined) لا تظهر في الاستعراض
-      if (r.private !== false) return false;
+      if (r.status !== 'waiting' || r.private) return false;
       if (browseFilter === 'all') return true;
       return r.type === browseFilter;
     });
@@ -1988,15 +1986,6 @@ async function joinRoomFromBrowse(roomId, room) {
     if (!snap.exists()) { showErr('browse-error', 'الغرفة لم تعد موجودة!'); refreshRoomsList(); return; }
     const d = snap.val();
     if (d.status !== 'waiting') { showErr('browse-error', 'اللعبة بدأت بالفعل في هذه الغرفة!'); refreshRoomsList(); return; }
-    // تحقق إذا كان هذا اللاعب مطروداً (بالاسم)
-    const kickedSnapB = await roomRef.child('kicked').once('value');
-    const kickedListB = kickedSnapB.val() || {};
-    const kickedNamesB = [];
-    for(const kId of Object.keys(kickedListB)){
-      const kPlayer = d.players?.[kId];
-      if(kPlayer) kickedNamesB.push(kPlayer.name.trim().replace(/\s+/g,'').toLowerCase());
-    }
-    if(kickedNamesB.includes(name.trim().replace(/\s+/g,'').toLowerCase())){ showErr('browse-error', 'تم طردك من هذه الغرفة ولا يمكنك الدخول مجدداً!'); return; }
     if (Object.keys(d.players || {}).length >= 100) { showErr('browse-error', 'الغرفة ممتلئة!'); return; }
     const existingNames = Object.values(d.players || {}).map(p => p.name.trim().replace(/\s+/g,'').toLowerCase());
     if (existingNames.includes(name.trim().replace(/\s+/g,'').toLowerCase())) { showErr('browse-error', 'هذا الاسم موجود بالفعل! اختر اسماً آخر.'); return; }
@@ -2024,15 +2013,6 @@ async function joinRoom(){
     if(!snap.exists()){showErr('join-error','الغرفة غير موجودة!');btn.innerHTML='🚪 دخول الغرفة';btn.disabled=false;return;}
     const d=snap.val();
     if(d.status==='playing'||d.status==='finished'){showErr('join-error','اللعبة بدأت بالفعل!');btn.innerHTML='🚪 دخول الغرفة';btn.disabled=false;return;}
-    // تحقق إذا كان هذا اللاعب مطروداً (بالاسم)
-    const kickedSnap = await roomRef.child('kicked').once('value');
-    const kickedList = kickedSnap.val() || {};
-    const kickedNames = [];
-    for(const kId of Object.keys(kickedList)){
-      const kPlayer = d.players?.[kId];
-      if(kPlayer) kickedNames.push(kPlayer.name.trim().replace(/\s+/g,'').toLowerCase());
-    }
-    if(kickedNames.includes(name.trim().replace(/\s+/g,'').toLowerCase())){showErr('join-error','تم طردك من هذه الغرفة ولا يمكنك الدخول مجدداً!');btn.innerHTML='🚪 دخول الغرفة';btn.disabled=false;return;}
     if(Object.keys(d.players||{}).length>=100){showErr('join-error','الغرفة ممتلئة! (الحد الأقصى ١٠٠ لاعب)');btn.innerHTML='🚪 دخول الغرفة';btn.disabled=false;return;}
     // تحقق من تكرار الاسم داخل الغرفة
     const existingNames = Object.values(d.players||{}).map(p=>p.name.trim().replace(/\s+/g,'').toLowerCase());
@@ -2201,12 +2181,8 @@ function enterWaitingRoom(){
     const kh=onlineRoomRef.child('kicked/'+onlineMyId).on('value',snap=>{
       if(snap.val()===true){
         offAll();
-        // احذف نفسك من اللاعبين فقط ولا تحذف الغرفة
-        if(onlineRoomRef && onlineMyId){
-          onlineRoomRef.child('players/'+onlineMyId).remove().catch(()=>{});
-        }
         alert('تم طردك من الغرفة من قِبل الرئيس!');
-        leaveOnlineGameKicked();
+        leaveOnlineGame();
       }
     });
     onlineUnsubs.push(()=>onlineRoomRef.child('kicked/'+onlineMyId).off('value',kh));
@@ -2261,12 +2237,17 @@ async function kickPlayer(pid, name) {
   document.querySelectorAll('[id^="kick-menu-"]').forEach(m => m.style.display = 'none');
   if (!onlineRoomRef || !onlineIsHost) return;
   try {
-    // أضف علامة طرد — تبقى دائمة حتى لا يتمكن المطرود من الدخول مجدداً
+    // أضف علامة طرد حتى يعرف اللاعب أنه طُرد
     await onlineRoomRef.child('kicked/'+pid).set(true);
-    // احذف اللاعب من قائمة اللاعبين فوراً
-    await onlineRoomRef.child('players/'+pid).remove();
+    // احذف اللاعب من القائمة بعد تأخير قصير حتى يقرأ إشعار الطرد
+    setTimeout(async () => {
+      try {
+        await onlineRoomRef.child('players/'+pid).remove();
+        // نظّف علامة الطرد
+        await onlineRoomRef.child('kicked/'+pid).remove();
+      } catch(e) { console.error('kick cleanup error', e); }
+    }, 2000);
   } catch(e) { console.error('kick error', e); }
-}
 }
 
 // ─── START (HOST) ─────────────────────────────────────────────────────────────
@@ -2601,8 +2582,13 @@ function showOnlineResults(){
 function leaveOnlineGame(){
   offAll(); clearInterval(onlineTimerInt); clearInterval(onlineSharedTimerInt);
   if(onlineRoomRef&&onlineMyId){
-    // احذف الغرفة بالكامل عند انتهاء اللعبة (لجميع اللاعبين لا الرئيس فقط)
-    onlineRoomRef.remove().catch(()=>{});
+    if(onlineIsHost){
+      // الرئيس يحذف الغرفة كاملة
+      onlineRoomRef.remove().catch(()=>{});
+    } else {
+      // اللاعب العادي يحذف نفسه فقط من القائمة
+      onlineRoomRef.child('players/'+onlineMyId).remove().catch(()=>{});
+    }
   }
   document.getElementById('lifelines-bar').style.display='';
   const bar=document.getElementById('online-players-bar'); if(bar)bar.classList.remove('active');
@@ -2614,51 +2600,19 @@ function leaveOnlineGame(){
   playMode='solo'; showScreen('screen-menu');
 }
 
-// دالة خاصة للاعب المطرود — تعيده للقائمة بدون حذف الغرفة
-function leaveOnlineGameKicked(){
-  offAll(); clearInterval(onlineTimerInt); clearInterval(onlineSharedTimerInt);
-  // لا نحذف الغرفة هنا — الغرفة تخص الرئيس والبقية
-  onlineRoomRef=null; onlineMyId=null; onlineIsHost=false;
-  document.getElementById('lifelines-bar').style.display='';
-  const bar=document.getElementById('online-players-bar'); if(bar)bar.classList.remove('active');
-  const bt=document.getElementById('online-big-timer'); if(bt)bt.classList.remove('active');
-  const tl=document.getElementById('online-timer-label'); if(tl)tl.style.display='none';
-  document.getElementById('score-badge-wrap').style.display='';
-  document.getElementById('timer-wrap').style.display='';
-  playMode='solo'; showScreen('screen-menu');
-}
-
 function openWaitingSettings(){
   document.getElementById('waiting-settings-modal').style.display='flex';
   const wrap = document.getElementById('privacy-toggle-wrap');
   if(wrap) wrap.style.display = onlineIsHost ? 'block' : 'none';
-  if(onlineIsHost && onlineRoomRef) {
-    // اقرأ الحالة الفعلية من Firebase وحدّث المتغير المحلي
-    onlineRoomRef.child('private').once('value', snap => {
-      roomIsPrivate = snap.val() !== false;
-      renderPrivacyToggle();
-    });
-  }
+  // استخدم setTimeout لضمان تطبيق الـ display قبل رسم الحالة
+  if(onlineIsHost) setTimeout(renderPrivacyToggle, 0);
 }
 function closeWaitingSettings(){
   document.getElementById('waiting-settings-modal').style.display='none';
 }
 function leaveFromWaiting(){
   closeWaitingSettings();
-  if(onlineIsHost){
-    // الرئيس يخرج = تُحذف الغرفة كاملاً
-    leaveOnlineGame();
-  } else {
-    // اللاعب العادي يخرج = يُحذف من اللاعبين فقط
-    offAll(); clearInterval(onlineTimerInt); clearInterval(onlineSharedTimerInt);
-    if(onlineRoomRef && onlineMyId){
-      onlineRoomRef.child('players/'+onlineMyId).remove().catch(()=>{});
-    }
-    onlineRoomRef=null; onlineMyId=null; onlineIsHost=false;
-    document.getElementById('lifelines-bar').style.display='';
-    const bar=document.getElementById('online-players-bar'); if(bar)bar.classList.remove('active');
-    playMode='solo'; showScreen('screen-menu');
-  }
+  leaveOnlineGame();
 }
 
 // ─── ROOM PRIVACY TOGGLE ──────────────────────────────────────────────────────
@@ -4931,7 +4885,7 @@ function goHomeFromSettings() {
     <div style="display:flex;gap:8px;">
       <button onclick="sendChatMsg()" style="background:linear-gradient(135deg,#0ea5e9,#38bdf8);border:none;border-radius:10px;padding:9px 14px;color:white;cursor:pointer;flex-shrink:0;">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z"/></svg>
-      </button>a
+      </button>
       <input id="chat-input" placeholder="اكتب رسالة..." maxlength="80"
         style="flex:1;background:#0e1020;border:1px solid rgba(56,189,248,0.25);border-radius:10px;padding:9px 14px;color:#e2d9f3;font-family:'Cairo',sans-serif;font-size:13px;direction:rtl;-webkit-text-fill-color:#e2d9f3;transition:border-color 0.3s,background 0.3s;"
         onkeydown="if(event.key==='Enter')sendChatMsg()"
