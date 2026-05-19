@@ -1524,7 +1524,7 @@
   <!-- ══ ONLINE: صنع أو دخول غرفة ══ -->
   <div class="screen" id="screen-online-action">
     <div class="room-card">
-      <button class="back-btn-small" onclick="showScreen('screen-type')">→</button>
+      <button class="back-btn-small" onclick="showScreen('screen-playmode')">→</button>
       <span style="font-size:64px;display:block;margin-bottom:14px;animation:bounce 2s ease-in-out infinite;">🌐</span>
       <h2 class="room-title">جماعي أونلاين</h2>
       <p class="room-sub" id="online-type-label">نوع الأسئلة: لفظي</p>
@@ -4931,7 +4931,7 @@ function goHomeFromSettings() {
     <div style="display:flex;gap:8px;">
       <button onclick="sendChatMsg()" style="background:linear-gradient(135deg,#0ea5e9,#38bdf8);border:none;border-radius:10px;padding:9px 14px;color:white;cursor:pointer;flex-shrink:0;">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z"/></svg>
-      </button>
+      </button>a
       <input id="chat-input" placeholder="اكتب رسالة..." maxlength="80"
         style="flex:1;background:#0e1020;border:1px solid rgba(56,189,248,0.25);border-radius:10px;padding:9px 14px;color:#e2d9f3;font-family:'Cairo',sans-serif;font-size:13px;direction:rtl;-webkit-text-fill-color:#e2d9f3;transition:border-color 0.3s,background 0.3s;"
         onkeydown="if(event.key==='Enter')sendChatMsg()"
