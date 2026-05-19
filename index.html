@@ -2051,17 +2051,12 @@ async function joinRoomFromBrowse(roomId, room) {
     const d = snap.val();
     if (d.status !== 'waiting') { showErr('browse-error', 'اللعبة بدأت بالفعل في هذه الغرفة!'); refreshRoomsList(); return; }
     if (Object.keys(d.players || {}).length >= 100) { showErr('browse-error', 'الغرفة ممتلئة!'); return; }
-    // ── فحص الحظر (localStorage + Firebase داخل وخارج الغرفة) ──
-    try { if(localStorage.getItem('banned_'+roomId)==='1'){showErr('browse-error','أنت محظور من هذه الغرفة!');return;} } catch(e){}
+    // ── فحص الحظر (داخل الغرفة فقط — يُرفع تلقائياً بانتهاء الغرفة) ──
     const nameLower = name.trim().replace(/\s+/g,'').toLowerCase();
-    const [bannedInRoom, bannedExternal] = await Promise.all([
-      roomRef.child('banned').once('value'),
-      db.ref('bans/' + roomId).once('value')
-    ]);
-    const allBanned = { ...(bannedInRoom.val()||{}), ...(bannedExternal.val()||{}) };
+    const bannedSnap = await roomRef.child('banned').once('value');
+    const allBanned = bannedSnap.val() || {};
     const isBanned = Object.values(allBanned).some(b => b.name && b.name.trim().replace(/\s+/g,'').toLowerCase() === nameLower);
     if (isBanned) {
-      try { localStorage.setItem('banned_'+roomId, '1'); } catch(e){}
       showErr('browse-error','أنت محظور من هذه الغرفة!'); return;
     }
     // ── فحص تكرار الاسم ──
@@ -2093,18 +2088,12 @@ async function joinRoom(){
     const d=snap.val();
     if(d.status==='playing'||d.status==='finished'){showErr('join-error','اللعبة بدأت بالفعل!');btn.innerHTML='🚪 دخول الغرفة';btn.disabled=false;return;}
     if(Object.keys(d.players||{}).length>=100){showErr('join-error','الغرفة ممتلئة! (الحد الأقصى ١٠٠ لاعب)');btn.innerHTML='🚪 دخول الغرفة';btn.disabled=false;return;}
-    // تحقق من الحظر المحلي (بالـ id القديم)
-    try { if(localStorage.getItem('banned_'+roomId)==='1'){showErr('join-error','أنت محظور من هذه الغرفة!');btn.innerHTML='🚪 دخول الغرفة';btn.disabled=false;return;} } catch(e){}
-    // تحقق من الحظر عبر Firebase — داخل الغرفة وخارجها (يمنع التحايل)
+    // تحقق من الحظر عبر Firebase — داخل الغرفة فقط (الحظر يُرفع تلقائياً بانتهاء الغرفة)
     const nameLower = name.trim().replace(/\s+/g,'').toLowerCase();
-    const [bannedInRoom, bannedExternal] = await Promise.all([
-      roomRef.child('banned').once('value'),
-      db.ref('bans/' + roomId).once('value')
-    ]);
-    const allBanned = { ...(bannedInRoom.val()||{}), ...(bannedExternal.val()||{}) };
-    const isBanned = Object.values(allBanned).some(b => b.name && b.name.trim().replace(/\s+/g,'').toLowerCase() === nameLower);
+    const bannedSnap2 = await roomRef.child('banned').once('value');
+    const allBanned2 = bannedSnap2.val() || {};
+    const isBanned = Object.values(allBanned2).some(b => b.name && b.name.trim().replace(/\s+/g,'').toLowerCase() === nameLower);
     if (isBanned) {
-      try { localStorage.setItem('banned_'+roomId, '1'); } catch(e){}
       showErr('join-error','أنت محظور من هذه الغرفة!');
       btn.innerHTML='🚪 دخول الغرفة'; btn.disabled=false; return;
     }
@@ -2281,10 +2270,8 @@ function enterWaitingRoom(){
         alert('تم طردك من الغرفة من قِبل الرئيس!');
         leaveOnlineGame();
       } else if(val==='banned'){
-        // خزّن الحظر محلياً
-        try { localStorage.setItem('banned_'+onlineRoomId, '1'); } catch(e){}
         offAll();
-        alert('تم حظرك من هذه الغرفة!');
+        alert('تم حظرك من هذه الغرفة! يمكنك الدخول بعد انتهاء الغرفة الحالية.');
         leaveOnlineGame();
       }
     });
@@ -2363,13 +2350,10 @@ async function kickPlayer(pid, name) {
 async function banPlayer(pid, name) {
   document.querySelectorAll('[id^="kick-menu-"]').forEach(m => m.style.display = 'none');
   if (!onlineRoomRef || !onlineIsHost) return;
-  if (!confirm(`هل تريد حظر "${name}"؟ لن يتمكن من الدخول مجدداً لهذه الغرفة.`)) return;
+  if (!confirm(`هل تريد حظر "${name}"؟ سيبقى محظوراً حتى تنتهي الغرفة.`)) return;
   try {
-    // سجّل الحظر في مكانين:
-    // ١- داخل الغرفة (للتحقق الفوري أثناء وجود الغرفة)
+    // سجّل الحظر داخل الغرفة فقط — ينحذف تلقائياً مع انتهاء الغرفة
     await onlineRoomRef.child('banned/'+pid).set({ name, bannedAt: Date.now() });
-    // ٢- خارج الغرفة تحت bans/{roomId} (يبقى حتى بعد حذف الغرفة)
-    await db.ref('bans/' + onlineRoomId + '/' + pid).set({ name, bannedAt: Date.now() });
     // طرده فوراً
     await onlineRoomRef.child('kicked/'+pid).set('banned');
     setTimeout(async () => {
