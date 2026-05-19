@@ -1729,9 +1729,10 @@
             </div>
             <div id="rematch-ready-count" style="font-size:12px;color:var(--muted);margin-top:6px;"></div>
           </div>
-          <button id="rematch-btn" class="retry-btn" onclick="requestRematch()" style="background:linear-gradient(135deg,#0ea5e9,#38bdf8,#06b6d4);margin-bottom:12px;">
+          <button id="rematch-btn" class="retry-btn" onclick="requestRematch()" style="background:linear-gradient(135deg,#0ea5e9,#38bdf8,#06b6d4);margin-bottom:8px;">
             🔄 إعادة اللعبة
           </button>
+          <div id="rematch-ready-count-host" style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:10px;"></div>
         </div>
         <button class="home-btn" onclick="leaveOnlineGame()">🏠 القائمة الرئيسية</button>
       </div>
@@ -2690,6 +2691,8 @@ function showOnlineResults(){
     }
     // ─────────────────────────────────────────────────────────────
     showScreen('screen-online-results');
+    // ابدأ الاستماع لعداد الجاهزين فور ظهور شاشة النتائج (للرئيس والجميع)
+    listenRematchReady();
   }
 
   // استخدم البيانات المحلية أولاً (أسرع وأموثوق لو الغرفة انحذفت)
@@ -2709,6 +2712,30 @@ function showOnlineResults(){
 // ─── REMATCH ──────────────────────────────────────────────────────────────────
 let _rematchUnsub = null;
 
+// ─── متغير لتتبع الاستماع لعداد الجاهزين ─────────────────────────────────────
+let _rematchReadyUnsub = null;
+
+function listenRematchReady() {
+  // توقف الاستماع القديم لو موجود
+  if (_rematchReadyUnsub) {
+    try { onlineRoomRef.child('rematch').off('value', _rematchReadyUnsub); } catch(e){}
+    _rematchReadyUnsub = null;
+  }
+  _rematchReadyUnsub = onlineRoomRef.child('rematch').on('value', snap => {
+    const data = snap.val() || {};
+    const count = Object.keys(data).length;
+    // عدد اللاعبين الكلي
+    const totalPlayers = Object.keys(onlinePlayers || {}).length;
+    const countText = count > 0 ? ('✅ ' + count + ' من ' + totalPlayers + ' جاهز للإعادة') : '';
+    // عداد داخل شاشة انتظار اللاعبين
+    const countEl = document.getElementById('rematch-ready-count');
+    if (countEl) countEl.textContent = countText;
+    // عداد ظاهر للرئيس تحت الزر
+    const countElHost = document.getElementById('rematch-ready-count-host');
+    if (countElHost) countElHost.textContent = countText;
+  });
+}
+
 async function requestRematch() {
   const btn = document.getElementById('rematch-btn');
   const waitingEl = document.getElementById('rematch-waiting');
@@ -2720,39 +2747,30 @@ async function requestRematch() {
   } catch(e) { console.error('rematch set error', e); return; }
 
   if (onlineIsHost) {
-    // الرئيس: تحقق إذا كل اللاعبين جاهزين ثم ابدأ
+    // الرئيس: يبدأ فوراً بعد الضغط
     btn.disabled = true;
-    btn.textContent = '⏳ جار التحقق...';
-    const playersSnap = await onlineRoomRef.child('players').once('value');
-    const totalPlayers = Object.keys(playersSnap.val() || {}).length;
-    const rematchSnap = await onlineRoomRef.child('rematch').once('value');
-    const readyCount = Object.keys(rematchSnap.val() || {}).length;
-    // الرئيس يبدأ مهما كان — يكفي أنه ضغط
+    btn.textContent = '⏳ جارٍ البدء...';
+    if (_rematchReadyUnsub) { try { onlineRoomRef.child('rematch').off('value', _rematchReadyUnsub); } catch(e){} _rematchReadyUnsub = null; }
     await startRematch();
   } else {
     // لاعب عادي: أخفِ الزر وأظهر شاشة الانتظار
     btn.style.display = 'none';
     waitingEl.style.display = 'block';
+    // ابدأ الاستماع لعداد الجاهزين
+    listenRematchReady();
     // استمع لبدء إعادة اللعبة من الرئيس
     _rematchUnsub = onlineRoomRef.child('rematch_start').on('value', snap => {
       if (snap.val() === true) {
         if (_rematchUnsub) { onlineRoomRef.child('rematch_start').off('value', _rematchUnsub); _rematchUnsub = null; }
+        if (_rematchReadyUnsub) { try { onlineRoomRef.child('rematch').off('value', _rematchReadyUnsub); } catch(e){} _rematchReadyUnsub = null; }
         executeRematch();
       }
-    });
-    // حدّث عداد الجاهزين
-    onlineRoomRef.child('rematch').on('value', snap => {
-      const count = Object.keys(snap.val() || {}).length;
-      const countEl = document.getElementById('rematch-ready-count');
-      if (countEl) countEl.textContent = `✅ ${count} لاعب جاهز للإعادة`;
     });
   }
 }
 
 async function startRematch() {
-  // أنهِ أي استماع سابق
   if (_rematchUnsub) { onlineRoomRef.child('rematch_start').off('value', _rematchUnsub); _rematchUnsub = null; }
-  // أشعر الكل بالبدء
   await onlineRoomRef.child('rematch_start').set(true).catch(()=>{});
   executeRematch();
 }
@@ -2762,7 +2780,7 @@ async function executeRematch() {
   try { await onlineRoomRef.child('rematch').remove(); } catch(e){}
   try { await onlineRoomRef.child('rematch_start').remove(); } catch(e){}
 
-  // اجلب إعدادات الغرفة
+  // اجلب بيانات الغرفة الكاملة (مهم — تضمن أسماء اللاعبين)
   const roomSnap = await onlineRoomRef.once('value').catch(()=>null);
   const roomData = roomSnap ? (roomSnap.val() || {}) : {};
   const qCount = roomData.questionCount || 10;
@@ -2770,54 +2788,46 @@ async function executeRematch() {
   const type   = roomData.type || currentType || 'verbal';
   currentType = type;
 
+  // حدّث onlinePlayers من البيانات الحديثة (يحل مشكلة undefined)
+  if (roomData.players) {
+    onlinePlayers = roomData.players;
+  }
+
   // اختار أسئلة جديدة مختلفة عن الجولة السابقة
   let pool = type === 'verbal' ? allQuestions.verbal :
              type === 'quantitative' ? allQuestions.quantitative :
              [...allQuestions.verbal, ...allQuestions.quantitative];
 
-  // احفظ الأسئلة القديمة لتجنبها
   const oldQTexts = new Set((roomData.questions || []).map(q => q.q));
   let freshPool = pool.filter(q => !oldQTexts.has(q.q));
-  if (freshPool.length < qCount) freshPool = pool; // fallback لو ما في كفاية
+  if (freshPool.length < qCount) freshPool = pool;
 
   const sp = [...freshPool].sort(() => Math.random() - 0.5).slice(0, qCount);
 
-  // أعد تعيين اللاعبين
-  const resetPlayers = {};
-  Object.keys(onlinePlayers || {}).forEach(pid => {
-    resetPlayers[pid + '/score'] = 0;
-    resetPlayers[pid + '/finished'] = false;
-  });
-
   if (onlineIsHost) {
-    await onlineRoomRef.update({
-      status: 'playing',
+    // أعد نقاط جميع اللاعبين مع الحفاظ على أسمائهم
+    const updates = { status: 'playing', gameDuration: gDur,
       questions: sp.map(q => ({ q: q.q, opts: q.opts, ans: q.ans, sub: q.sub || '' })),
-      startedAt: firebase.database.ServerValue.TIMESTAMP,
-      gameDuration: gDur
-    }).catch(()=>{});
-    // أعد نقاط اللاعبين
-    const updates = {};
+      startedAt: firebase.database.ServerValue.TIMESTAMP };
     Object.keys(onlinePlayers || {}).forEach(pid => {
       updates['players/' + pid + '/score'] = 0;
       updates['players/' + pid + '/finished'] = false;
+      // الاسم موجود بالفعل في onlinePlayers — ما نمسحه
     });
     await onlineRoomRef.update(updates).catch(()=>{});
   }
 
-  // أعد متغيرات اللعبة
+  // أعد متغيرات اللعبة المحلية
   onlineScore = 0;
   onlineCurrentQ = 0;
   onlineAnswered = false;
   onlineTimeLeft = gDur || 120;
 
-  // انطلق!
   if (onlineIsHost) {
     onlineQuestions = sp;
     startOnlineQuiz();
   } else {
-    // انتظر قراءة الأسئلة من Firebase
-    setTimeout(() => loadOnlineGameData(), 400);
+    setTimeout(() => loadOnlineGameData(), 500);
   }
 }
 
