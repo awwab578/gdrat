@@ -1851,20 +1851,19 @@ function setQuestionCount(count, duration) {
 }
 
 // ─── PRESENCE / RECONNECT ────────────────────────────────────────────────────
-const RECONNECT_TIMEOUT = 10000; // 10 ثواني
-let _presenceTimer = null;
-let _presenceSetup = false;
+const RECONNECT_TIMEOUT = 10000;
+let _presenceTimer   = null;
+let _presenceSetup   = false;
 let _presenceRoomRef = null;
-let _presenceMyId = null;
+let _presenceMyId    = null;
+let _pingInterval    = null;   // دوري يتحقق من الاتصال كل ثانية
 
 function _onOffline() {
   if (!_presenceRoomRef || !_presenceMyId) return;
-  // ألغ الـ onDisconnect الفوري حتى لا يُحذف اللاعب مباشرة من Firebase
-  _presenceRoomRef.child('players/' + _presenceMyId).onDisconnect().cancel().catch(() => {});
-  // ضع علامة جار الاتصال
-  _presenceRoomRef.child('players/' + _presenceMyId + '/reconnecting').set(true).catch(() => {});
-  // بعد 10 ثواني — لو ما رجع — احذف واخرج
   clearTimeout(_presenceTimer);
+  // ضع علامة "جار الاتصال" للاعبين الآخرين
+  _presenceRoomRef.child('players/' + _presenceMyId + '/reconnecting').set(true).catch(() => {});
+  // بعد 10 ثواني اخرج
   _presenceTimer = setTimeout(() => {
     _presenceRoomRef.child('players/' + _presenceMyId).remove().catch(() => {});
     offAll();
@@ -1874,21 +1873,31 @@ function _onOffline() {
 
 function _onOnline() {
   if (!_presenceRoomRef || !_presenceMyId) return;
-  // رجع الاتصال — امسح المؤقت والعلامة
   clearTimeout(_presenceTimer);
   _presenceTimer = null;
+  // امسح العلامة واستعد onDisconnect
   _presenceRoomRef.child('players/' + _presenceMyId + '/reconnecting').set(false).catch(() => {});
-  // أعد تفعيل onDisconnect الطبيعي
   _presenceRoomRef.child('players/' + _presenceMyId).onDisconnect().remove();
 }
 
 function setupPresence(roomRef, myId) {
   if (_presenceSetup) return;
-  _presenceSetup = true;
+  _presenceSetup   = true;
   _presenceRoomRef = roomRef;
-  _presenceMyId = myId;
+  _presenceMyId    = myId;
+
+  // الطريقة ١: أحداث المتصفح (فورية على معظم الأجهزة)
   window.addEventListener('offline', _onOffline);
   window.addEventListener('online',  _onOnline);
+
+  // الطريقة ٢: ping دوري كل ثانية — يكشف الانقطاع حتى لو ما اشتغل offline event
+  let wasOnline = navigator.onLine;
+  _pingInterval = setInterval(() => {
+    const isOnline = navigator.onLine;
+    if (wasOnline && !isOnline) _onOffline();
+    else if (!wasOnline && isOnline) _onOnline();
+    wasOnline = isOnline;
+  }, 1000);
 }
 
 async function createRoom(){
@@ -2042,12 +2051,27 @@ async function joinRoomFromBrowse(roomId, room) {
     const d = snap.val();
     if (d.status !== 'waiting') { showErr('browse-error', 'اللعبة بدأت بالفعل في هذه الغرفة!'); refreshRoomsList(); return; }
     if (Object.keys(d.players || {}).length >= 100) { showErr('browse-error', 'الغرفة ممتلئة!'); return; }
+    // ── فحص الحظر (localStorage + Firebase داخل وخارج الغرفة) ──
+    try { if(localStorage.getItem('banned_'+roomId)==='1'){showErr('browse-error','أنت محظور من هذه الغرفة!');return;} } catch(e){}
+    const nameLower = name.trim().replace(/\s+/g,'').toLowerCase();
+    const [bannedInRoom, bannedExternal] = await Promise.all([
+      roomRef.child('banned').once('value'),
+      db.ref('bans/' + roomId).once('value')
+    ]);
+    const allBanned = { ...(bannedInRoom.val()||{}), ...(bannedExternal.val()||{}) };
+    const isBanned = Object.values(allBanned).some(b => b.name && b.name.trim().replace(/\s+/g,'').toLowerCase() === nameLower);
+    if (isBanned) {
+      try { localStorage.setItem('banned_'+roomId, '1'); } catch(e){}
+      showErr('browse-error','أنت محظور من هذه الغرفة!'); return;
+    }
+    // ── فحص تكرار الاسم ──
     const existingNames = Object.values(d.players || {}).map(p => p.name.trim().replace(/\s+/g,'').toLowerCase());
-    if (existingNames.includes(name.trim().replace(/\s+/g,'').toLowerCase())) { showErr('browse-error', 'هذا الاسم موجود بالفعل! اختر اسماً آخر.'); return; }
+    if (existingNames.includes(nameLower)) { showErr('browse-error', 'هذا الاسم موجود بالفعل! اختر اسماً آخر.'); return; }
     onlineMyId='p_'+Date.now(); onlineMyName=name; onlineRoomId=roomId; onlineIsHost=false; currentType=d.type||'verbal';
     await roomRef.child('players/'+onlineMyId).set({name, score:0, joinedAt:Date.now()});
     roomRef.child('players/'+onlineMyId).onDisconnect().remove();
     onlineRoomRef=roomRef;
+    setupPresence(roomRef, onlineMyId);
     enterWaitingRoom();
   } catch(e) { showErr('browse-error','خطأ في الاتصال! تأكد من الإنترنت.'); }
 }
@@ -2688,9 +2712,9 @@ function showOnlineResults(){
 
 function leaveOnlineGame(){
   offAll(); clearInterval(onlineTimerInt); clearInterval(onlineSharedTimerInt);
-  // إزالة مستمعي الاتصال وإعادة تعيين حالة الـ presence
   window.removeEventListener('offline', _onOffline);
   window.removeEventListener('online',  _onOnline);
+  clearInterval(_pingInterval); _pingInterval = null;
   clearTimeout(_presenceTimer); _presenceTimer = null;
   _presenceSetup = false; _presenceRoomRef = null; _presenceMyId = null;
   if(onlineRoomRef&&onlineMyId){
