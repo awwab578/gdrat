@@ -1546,6 +1546,14 @@
           </div>
           <div class="oab-arrow">←</div>
         </button>
+        <button class="online-action-btn" onclick="openBrowseRooms()" style="border-color:rgba(168,85,247,0.35);">
+          <div class="oab-icon">🔍</div>
+          <div class="oab-content">
+            <span class="oab-name" style="color:#c084fc;">استعراض الغرف</span>
+            <span class="oab-desc">شوف كل الغرف المتاحة وادخل أي غرفة تبغاها</span>
+          </div>
+          <div class="oab-arrow">←</div>
+        </button>
       </div>
     </div>
   </div>
@@ -1580,6 +1588,31 @@
       </div>
       <div class="error-msg" id="join-error"></div>
       <button class="room-btn-primary" id="join-btn" onclick="joinRoom()">🚪 دخول الغرفة</button>
+    </div>
+  </div>
+
+  <!-- ══ ONLINE: استعراض الغرف ══ -->
+  <div class="screen" id="screen-online-browse">
+    <div class="room-card">
+      <button class="back-btn-small" onclick="showScreen('screen-online-action')">→</button>
+      <span style="font-size:52px;display:block;margin-bottom:12px;animation:bounce 2s ease-in-out infinite;">🔍</span>
+      <h2 class="room-title" style="background:linear-gradient(135deg,#c084fc,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">استعراض الغرف</h2>
+      <p class="room-sub">اختر اسمك ثم ادخل أي غرفة متاحة</p>
+      <input class="room-input" id="browse-name" placeholder="اسمك" maxlength="20" style="margin-bottom:16px;" />
+      <div class="error-msg" id="browse-error"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <span style="font-size:13px;color:var(--muted);font-weight:600;">الغرف المتاحة</span>
+        <button onclick="refreshRoomsList()" style="background:rgba(192,132,252,0.12);border:1px solid rgba(192,132,252,0.3);border-radius:8px;padding:6px 12px;font-family:'Cairo',sans-serif;font-size:12px;font-weight:700;color:#c084fc;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='rgba(192,132,252,0.22)'" onmouseout="this.style.background='rgba(192,132,252,0.12)'">🔄 تحديث</button>
+      </div>
+      <div id="rooms-list-container" style="display:flex;flex-direction:column;gap:10px;max-height:320px;overflow-y:auto;"></div>
+      <div id="rooms-empty" style="display:none;text-align:center;padding:32px 20px;color:var(--muted);">
+        <div style="font-size:48px;margin-bottom:12px;">🏜️</div>
+        <div style="font-size:15px;font-weight:700;margin-bottom:6px;">لا توجد غرف متاحة</div>
+        <div style="font-size:13px;">صنع غرفة جديدة وادعو أصدقائك!</div>
+      </div>
+      <div id="rooms-loading" style="text-align:center;padding:32px 20px;color:var(--muted);font-size:14px;font-weight:600;">
+        <span class="loading-spinner" style="border-color:rgba(192,132,252,0.3);border-top-color:#c084fc;"></span> جارٍ التحميل...
+      </div>
     </div>
   </div>
 
@@ -1651,6 +1684,40 @@ async function loadFirebase() {
   });
 }
 
+// ─── ROOM CLEANUP ─────────────────────────────────────────────────────────────
+// يحذف أي غرفة فارغة أو قديمة (أكثر من ساعتين) من Firebase
+async function cleanupStaleRooms() {
+  if(!db) return;
+  try {
+    const snap = await db.ref('rooms').once('value');
+    const all = snap.val() || {};
+    const now = Date.now();
+    const TWO_HOURS = 2 * 60 * 60 * 1000;
+    const promises = [];
+    Object.entries(all).forEach(([roomId, room]) => {
+      const isEmpty   = !room.players || Object.keys(room.players).length === 0;
+      const isOld     = room.createdAt && (now - room.createdAt) > TWO_HOURS;
+      const isFinished = room.status === 'finished';
+      if (isEmpty || isOld || isFinished) {
+        promises.push(db.ref('rooms/' + roomId).remove().catch(()=>{}));
+      }
+    });
+    await Promise.all(promises);
+  } catch(e) { /* silent */ }
+}
+
+// يحذف الغرفة تلقائياً إذا خرج آخر لاعب (مراقبة مستمرة)
+function watchRoomForEmpty(roomRef) {
+  const handle = roomRef.child('players').on('value', snap => {
+    const players = snap.val();
+    if (!players || Object.keys(players).length === 0) {
+      roomRef.remove().catch(()=>{});
+      roomRef.child('players').off('value', handle);
+    }
+  });
+  return handle;
+}
+
 // ─── STATE ────────────────────────────────────────────────────────────────────
 let onlineRoomId='', onlineMyName='', onlineMyId='', onlineIsHost=false;
 let onlineRoomRef=null, onlineUnsubs=[], onlineCurrentType='verbal';
@@ -1676,12 +1743,100 @@ async function createRoom(){
     const snap=await roomRef.once('value');
     if(snap.exists()){showErr('create-error','اسم الغرفة موجود بالفعل! جرّب اسماً آخر للغرفة.');btn.innerHTML='🏠 إنشاء الغرفة';btn.disabled=false;return;}
     onlineMyId='p_'+Date.now(); onlineMyName=name; onlineRoomId=roomId; onlineIsHost=true;
-    await roomRef.set({host:onlineMyId,type:currentType,status:'waiting',createdAt:Date.now(),players:{[onlineMyId]:{name,score:0,joinedAt:Date.now()}}});
+    roomIsPrivate = true; // default private
+    await roomRef.set({host:onlineMyId,type:currentType,status:'waiting',private:true,createdAt:Date.now(),players:{[onlineMyId]:{name,score:0,joinedAt:Date.now()}}});
+    // إذا انقطع اتصال الرئيس تُحذف الغرفة كلها تلقائياً
+    roomRef.onDisconnect().remove();
     roomRef.child('players/'+onlineMyId).onDisconnect().remove();
     onlineRoomRef=roomRef;
+    // نظّف الغرف القديمة في الخلفية
+    cleanupStaleRooms();
+    // راقب الغرفة — احذفها إذا فضلت فارغة
+    watchRoomForEmpty(roomRef);
     btn.innerHTML='🏠 إنشاء الغرفة'; btn.disabled=false;
     enterWaitingRoom();
   }catch(e){showErr('create-error','خطأ في الاتصال! تأكد من الإنترنت.');btn.innerHTML='🏠 إنشاء الغرفة';btn.disabled=false;}
+}
+
+// ─── BROWSE ROOMS ─────────────────────────────────────────────────────────────
+async function openBrowseRooms() {
+  showScreen('screen-online-browse');
+  document.getElementById('browse-error').classList.remove('show');
+  document.getElementById('rooms-list-container').innerHTML = '';
+  document.getElementById('rooms-empty').style.display = 'none';
+  document.getElementById('rooms-loading').style.display = 'block';
+  try {
+    await loadFirebase();
+    // نظّف الغرف المهجورة قبل عرض القائمة
+    await cleanupStaleRooms();
+    refreshRoomsList();
+  } catch(e) {
+    document.getElementById('rooms-loading').style.display = 'none';
+    showErr('browse-error', 'خطأ في الاتصال! تأكد من الإنترنت.');
+  }
+}
+
+async function refreshRoomsList() {
+  const container = document.getElementById('rooms-list-container');
+  const empty = document.getElementById('rooms-empty');
+  const loading = document.getElementById('rooms-loading');
+  document.getElementById('browse-error').classList.remove('show');
+  loading.style.display = 'block';
+  container.innerHTML = '';
+  empty.style.display = 'none';
+  try {
+    await loadFirebase();
+    const snap = await db.ref('rooms').once('value');
+    loading.style.display = 'none';
+    const all = snap.val() || {};
+    const waiting = Object.entries(all).filter(([id, r]) => r.status === 'waiting' && !r.private);
+    if (waiting.length === 0) { empty.style.display = 'block'; return; }
+    const typeLabels = { verbal: '📝 لفظي', quantitative: '🔢 كمي', both: '⚡ لفظي وكمي' };
+    waiting.sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0));
+    waiting.forEach(([roomId, room]) => {
+      const playerCount = Object.keys(room.players || {}).length;
+      const typeLabel = typeLabels[room.type] || '🌟';
+      const hostName = room.players && room.host ? ((room.players[room.host] || {}).name || 'مجهول') : 'مجهول';
+      const card = document.createElement('div');
+      card.style.cssText = 'background:rgba(192,132,252,0.07);border:1.5px solid rgba(192,132,252,0.25);border-radius:14px;padding:14px 18px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all 0.25s;';
+      card.onmouseover = () => { card.style.background='rgba(192,132,252,0.15)'; card.style.borderColor='rgba(192,132,252,0.5)'; card.style.transform='translateX(-4px)'; };
+      card.onmouseout  = () => { card.style.background='rgba(192,132,252,0.07)'; card.style.borderColor='rgba(192,132,252,0.25)'; card.style.transform=''; };
+      card.onclick = () => joinRoomFromBrowse(roomId, room);
+      card.innerHTML = `
+        <div style="width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,#7c3aed,#c084fc);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">🏠</div>
+        <div style="flex:1;text-align:right;">
+          <div style="font-size:16px;font-weight:800;color:#e2d9f3;margin-bottom:4px;">${roomId}</div>
+          <div style="font-size:12px;color:var(--muted);">👑 ${hostName} &nbsp;·&nbsp; ${typeLabel} &nbsp;·&nbsp; 👥 ${playerCount} لاعب</div>
+        </div>
+        <div style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.4);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;color:#6ee7b7;white-space:nowrap;">دخول ←</div>`;
+      container.appendChild(card);
+    });
+  } catch(e) {
+    loading.style.display = 'none';
+    showErr('browse-error', 'خطأ في تحميل الغرف!');
+  }
+}
+
+async function joinRoomFromBrowse(roomId, room) {
+  const name = (document.getElementById('browse-name').value || '').trim();
+  document.getElementById('browse-error').classList.remove('show');
+  if (!name) { showErr('browse-error', 'أدخل اسمك أولاً!'); return; }
+  try {
+    await loadFirebase();
+    const roomRef = db.ref('rooms/' + roomId);
+    const snap = await roomRef.once('value');
+    if (!snap.exists()) { showErr('browse-error', 'الغرفة لم تعد موجودة!'); refreshRoomsList(); return; }
+    const d = snap.val();
+    if (d.status !== 'waiting') { showErr('browse-error', 'اللعبة بدأت بالفعل في هذه الغرفة!'); refreshRoomsList(); return; }
+    if (Object.keys(d.players || {}).length >= 100) { showErr('browse-error', 'الغرفة ممتلئة!'); return; }
+    const existingNames = Object.values(d.players || {}).map(p => p.name.trim().replace(/\s+/g,'').toLowerCase());
+    if (existingNames.includes(name.trim().replace(/\s+/g,'').toLowerCase())) { showErr('browse-error', 'هذا الاسم موجود بالفعل! اختر اسماً آخر.'); return; }
+    onlineMyId='p_'+Date.now(); onlineMyName=name; onlineRoomId=roomId; onlineIsHost=false; currentType=d.type||'verbal';
+    await roomRef.child('players/'+onlineMyId).set({name, score:0, joinedAt:Date.now()});
+    roomRef.child('players/'+onlineMyId).onDisconnect().remove();
+    onlineRoomRef=roomRef;
+    enterWaitingRoom();
+  } catch(e) { showErr('browse-error','خطأ في الاتصال! تأكد من الإنترنت.'); }
 }
 
 // ─── JOIN ROOM ────────────────────────────────────────────────────────────────
@@ -1702,8 +1857,8 @@ async function joinRoom(){
     if(d.status==='playing'||d.status==='finished'){showErr('join-error','اللعبة بدأت بالفعل!');btn.innerHTML='🚪 دخول الغرفة';btn.disabled=false;return;}
     if(Object.keys(d.players||{}).length>=100){showErr('join-error','الغرفة ممتلئة! (الحد الأقصى ١٠٠ لاعب)');btn.innerHTML='🚪 دخول الغرفة';btn.disabled=false;return;}
     // تحقق من تكرار الاسم داخل الغرفة
-    const existingNames = Object.values(d.players||{}).map(p=>p.name.trim().toLowerCase());
-    if(existingNames.includes(name.toLowerCase())){showErr('join-error','هذا الاسم موجود بالفعل في الغرفة! اختر اسماً آخر.');btn.innerHTML='🚪 دخول الغرفة';btn.disabled=false;return;}
+    const existingNames = Object.values(d.players||{}).map(p=>p.name.trim().replace(/\s+/g,'').toLowerCase());
+    if(existingNames.includes(name.trim().replace(/\s+/g,'').toLowerCase())){showErr('join-error','هذا الاسم موجود بالفعل في الغرفة! اختر اسماً آخر.');btn.innerHTML='🚪 دخول الغرفة';btn.disabled=false;return;}
     onlineMyId='p_'+Date.now(); onlineMyName=name; onlineRoomId=roomId; onlineIsHost=false; currentType=d.type||'verbal';
     await roomRef.child('players/'+onlineMyId).set({name,score:0,joinedAt:Date.now()});
     roomRef.child('players/'+onlineMyId).onDisconnect().remove();
@@ -2025,6 +2180,10 @@ function leaveOnlineGame(){
 
 function openWaitingSettings(){
   document.getElementById('waiting-settings-modal').style.display='flex';
+  const wrap = document.getElementById('privacy-toggle-wrap');
+  if(wrap) wrap.style.display = onlineIsHost ? 'block' : 'none';
+  // استخدم setTimeout لضمان تطبيق الـ display قبل رسم الحالة
+  if(onlineIsHost) setTimeout(renderPrivacyToggle, 0);
 }
 function closeWaitingSettings(){
   document.getElementById('waiting-settings-modal').style.display='none';
@@ -2032,6 +2191,48 @@ function closeWaitingSettings(){
 function leaveFromWaiting(){
   closeWaitingSettings();
   leaveOnlineGame();
+}
+
+// ─── ROOM PRIVACY TOGGLE ──────────────────────────────────────────────────────
+let roomIsPrivate = true; // default: private (not shown in browse)
+
+function renderPrivacyToggle() {
+  const btn   = document.getElementById('privacy-toggle-btn');
+  const text  = document.getElementById('privacy-btn-text');
+  const pill  = document.getElementById('privacy-pill');
+  const knob  = document.getElementById('privacy-knob');
+  if(!btn) return;
+  if(roomIsPrivate) {
+    // أحمر — خاص: الكرة على اليسار (translateX(0) في ltr)
+    btn.style.background   = 'rgba(239,68,68,0.15)';
+    btn.style.borderColor  = 'rgba(239,68,68,0.45)';
+    btn.style.color        = '#fca5a5';
+    btn.style.boxShadow    = '0 4px 16px rgba(239,68,68,0.2)';
+    text.textContent       = '🔒 خاص';
+    pill.style.background  = 'rgba(239,68,68,0.35)';
+    knob.style.transform   = 'translateX(0px)';
+    knob.style.background  = '#fca5a5';
+  } else {
+    // أخضر — عام: الكرة على اليمين (translateX(24px) في ltr)
+    btn.style.background   = 'rgba(16,185,129,0.15)';
+    btn.style.borderColor  = 'rgba(16,185,129,0.45)';
+    btn.style.color        = '#6ee7b7';
+    btn.style.boxShadow    = '0 4px 16px rgba(16,185,129,0.2)';
+    text.textContent       = '🌐 عام';
+    pill.style.background  = 'rgba(16,185,129,0.45)';
+    knob.style.transform   = 'translateX(24px)';
+    knob.style.background  = '#6ee7b7';
+  }
+}
+
+async function toggleRoomPrivacy() {
+  roomIsPrivate = !roomIsPrivate;
+  renderPrivacyToggle();
+  if(onlineRoomRef) {
+    try {
+      await onlineRoomRef.update({ private: roomIsPrivate });
+    } catch(e) { /* silent */ }
+  }
 }
 </script>
 
@@ -4195,6 +4396,41 @@ function goHomeFromSettings() {
     <div class="settings-title">⚙️ الإعدادات</div>
     <div class="settings-btns">
       <button class="settings-continue-btn" onclick="closeWaitingSettings()">▶️ استمرار</button>
+
+      <!-- Privacy Toggle — only visible to host -->
+      <div id="privacy-toggle-wrap" style="display:none;">
+        <div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:8px;text-align:center;letter-spacing:0.5px;">خصوصية الغرفة</div>
+        <button id="privacy-toggle-btn" onclick="toggleRoomPrivacy()" style="
+          width:100%; border:none; border-radius:14px; padding:14px 18px;
+          font-family:'Cairo',sans-serif; font-size:15px; font-weight:700;
+          cursor:pointer; transition:background 0.4s, border-color 0.4s, box-shadow 0.4s, color 0.4s;
+          display:flex; align-items:center; justify-content:space-between; gap:10px;
+          direction:rtl;
+          background:rgba(239,68,68,0.15); color:#fca5a5;
+          border:1.5px solid rgba(239,68,68,0.45);
+          box-shadow: 0 4px 16px rgba(239,68,68,0.2);
+        ">
+          <span id="privacy-btn-text" style="font-size:15px;font-weight:800;">🔒 خاص</span>
+          <!-- الـ pill بـ ltr ثابت حتى translateX يشتغل صح -->
+          <span id="privacy-pill" style="
+            direction:ltr;
+            display:inline-flex; align-items:center;
+            width:52px; height:28px; border-radius:99px; padding:3px;
+            background:rgba(239,68,68,0.35);
+            transition:background 0.4s;
+            flex-shrink:0;
+          ">
+            <span id="privacy-knob" style="
+              width:22px; height:22px; border-radius:50%;
+              background:#fca5a5; display:block;
+              transform:translateX(0px);
+              transition:transform 0.4s cubic-bezier(0.4,0,0.2,1), background 0.4s;
+              box-shadow:0 2px 6px rgba(0,0,0,0.35);
+            "></span>
+          </span>
+        </button>
+      </div>
+
       <button class="settings-home-btn" onclick="leaveFromWaiting()">🏠 الصفحة الرئيسية</button>
     </div>
   </div>
